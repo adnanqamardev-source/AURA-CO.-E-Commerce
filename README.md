@@ -130,5 +130,4 @@ The server checks for GEMINI_API_KEY and will return a descriptive error if miss
 - Built with React, Vite, Tailwind, Firebase, and Google Gemini.
 - Icons by lucide-react.
 
----
-If you want, I can place this README into the repository as README.md so it's visible on the project home page.
+
