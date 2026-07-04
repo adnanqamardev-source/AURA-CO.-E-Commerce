@@ -9,6 +9,7 @@ dotenv.config();
 
 // Import shared product list
 import { PRODUCTS } from "./src/products";
+import { paymentRouter } from "./src/controllers/paymentController";
 
 // Initialize express app
 export const app = express();
@@ -16,6 +17,9 @@ const PORT = 3000;
 
 // Middleware to parse JSON
 app.use(express.json());
+
+// Mount the payment controller
+app.use("/api/payment", paymentRouter);
 
 // Lazy-initialized Gemini AI client
 let aiClient: GoogleGenAI | null = null;

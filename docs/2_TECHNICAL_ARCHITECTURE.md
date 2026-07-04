@@ -1,4 +1,8 @@
-# Technical Architecture Document
+# Technical Architecture Document — UsTogether
+
+**Version:** 1.1  
+**Date:** 2026-07-04  
+**Status:** Active
 
 ## 1. Tech Stack Overview
 This full-stack application operates on a modern, ultra-fast TypeScript ecosystem designed for zero cold-starts, high responsive fidelity, and smooth animations.
@@ -35,6 +39,14 @@ The project is structurally divided into modular directories separating layout d
 │   │   ├── OwnerPanelModal.tsx       # Secured Lock screen + Store Admin Catalog & UPI gate controllers
 │   │   ├── UserAuthModal.tsx         # Firebase Multi-Protocol Authentication (Email, Google, Phone SMS)
 │   │   └── ProductCard.tsx           # Individual product card UI with options
+│   ├── controllers/                  # Express controllers/routers
+│   │   └── paymentController.ts      # Checkout API entry point
+│   ├── services/
+│   │   └── payment/                  # Resilient payment gateway implementations
+│   │       ├── factory.ts            # Gateway Factory (Proxy-wrapped providers)
+│   │       ├── gateways.ts           # Stripe & Razorpay concrete gate implementations
+│   │       ├── proxy.ts              # PaymentGatewayProxy with exponential backoff
+│   │       └── service.ts            # PaymentService (Singleton controller delegator)
 │   ├── utils/
 │   │   ├── currency.ts               # Currency conversions, rates, symbol formatting
 │   │   └── firebase.ts               # Firebase App, Firestore, and Auth initialization module
@@ -42,7 +54,9 @@ The project is structurally divided into modular directories separating layout d
 │   ├── index.css                     # Tailwind v4 import, custom font setups & theme variables
 │   ├── main.tsx                      # Vite React browser entrypoint
 │   ├── products.ts                   # Standard curated product database and categories
-│   └── types.ts                      # Shared TypeScript interface definitions
+│   ├── types.ts                      # Shared TypeScript interface definitions
+│   └── types/
+│       └── payment.ts                # PaymentRequest, GatewayType and IPaymentGateway types
 ├── firebase-applet-config.json        # Compiled Firebase config keys (client credentials)
 ├── firebase-blueprint.json           # Declarative Intermediate Representation (IR) of Collections
 ├── firestore.rules                   # Real-time Cloud Firestore security permission files
