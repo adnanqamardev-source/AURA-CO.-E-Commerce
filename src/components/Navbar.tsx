@@ -1,7 +1,8 @@
 import React from "react";
-import { ShoppingBag, Search, Sparkles, Clock, ShieldCheck, LogOut } from "lucide-react";
+import { ShoppingBag, Search, Sparkles, Clock, ShieldCheck, LogOut, User as UserIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { CurrencyCode } from "../utils/currency";
+import { User as FirebaseUser } from "firebase/auth";
 
 interface NavbarProps {
   searchQuery: string;
@@ -18,6 +19,9 @@ interface NavbarProps {
   onOpenOwnerPanel: () => void;
   isOwnerLoggedIn: boolean;
   onOwnerLogout: () => void;
+  currentUser: FirebaseUser | null;
+  onOpenAuth: () => void;
+  onLogout: () => void;
 }
 
 export default function Navbar({
@@ -35,6 +39,9 @@ export default function Navbar({
   onOpenOwnerPanel,
   isOwnerLoggedIn,
   onOwnerLogout,
+  currentUser,
+  onOpenAuth,
+  onLogout,
 }: NavbarProps) {
   const categories: ("All" | "Home" | "Wellness" | "Work")[] = [
     "All",
@@ -82,47 +89,41 @@ export default function Navbar({
             ))}
           </nav>
 
-          {/* Search bar & Action Buttons */}
-          <div className="flex items-center space-x-4">
+          {/* Action Buttons & Consolidated Portal Groups */}
+          <div className="flex items-center gap-2 sm:gap-3">
             
-            {/* Real-time Search Box */}
-            <div className="relative hidden sm:block w-48 md:w-64">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <Search className="h-4 w-4 text-gray-400" />
-              </span>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search catalog..."
-                className="w-full pl-9 pr-4 py-1.5 bg-white border border-[#e2e8f0] rounded-full text-xs placeholder-gray-400 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all duration-200"
-              />
+            {/* 1. Real-time Search Box & AI Concierge Group (Desktop) */}
+            <div className="hidden lg:flex items-center gap-2">
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <Search className="h-3.5 w-3.5 text-neutral-400" />
+                </span>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search curation..."
+                  className="w-40 xl:w-52 pl-9 pr-3 py-1.5 bg-white border border-neutral-200 hover:border-neutral-300 focus:bg-white focus:border-neutral-950 rounded-full text-xs placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-950 transition-all duration-300"
+                />
+              </div>
+
+              <button
+                onClick={onOpenAi}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#f5f5f4] hover:bg-neutral-200 border border-neutral-200 text-neutral-800 text-[11px] font-bold rounded-full shadow-2xs transition-all shrink-0 cursor-pointer"
+                title="Aura Guide AI Assistant"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-indigo-600 animate-pulse" />
+                <span>Aura Guide</span>
+              </button>
             </div>
 
-            {/* AI Concierge Shortcut Button */}
-            <button
-              onClick={onOpenAi}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#f1f5f9] hover:bg-[#cbd5e1] border border-[#cbd5e1] text-[#1a1a1a] text-xs font-semibold rounded-full shadow-sm transition-all"
-            >
-              <Sparkles className="h-3.5 w-3.5 text-indigo-600 animate-pulse" />
-              <span className="hidden md:inline">Aura Guide</span>
-            </button>
-
-            {/* Loyalty Points Badge */}
-            {points > 0 && (
-              <div className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-xs font-medium">
-                <Clock className="h-3.5 w-3.5 text-amber-600" />
-                <span>{points} pts</span>
-              </div>
-            )}
-
-            {/* Currency Selector Toggle */}
-            <div className="flex items-center">
+            {/* 2. Currency Selector Toggle */}
+            <div className="hidden sm:flex items-center px-2.5 py-1 border border-neutral-200 bg-white rounded-full">
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-                className="bg-white border border-[#e2e8f0] hover:border-gray-400 text-[#1a1a1a] text-xs font-mono font-bold rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-black transition-all cursor-pointer"
-                title="Select Shop Currency"
+                className="bg-transparent border-none text-neutral-600 hover:text-neutral-950 text-[10px] font-mono font-bold focus:outline-none transition-all cursor-pointer"
+                title="Change Store Currency"
               >
                 <option value="USD">USD ($)</option>
                 <option value="EUR">EUR (€)</option>
@@ -130,90 +131,151 @@ export default function Navbar({
               </select>
             </div>
 
-            {/* Owner Portal Trigger Button */}
-            <div className="flex items-center gap-1">
+            {/* 3. Consolidated Portal & Profile Group (Owner + Customer) */}
+            <div className="flex items-center gap-1 border border-neutral-200 bg-[#f5f5f4]/80 rounded-full p-1 transition-all">
+              {/* Boutique Owner Action */}
               <button
                 onClick={onOpenOwnerPanel}
-                className={`p-2 rounded-full transition-colors relative ${
+                className={`p-1.5 rounded-full transition-all relative ${
                   isOwnerLoggedIn
-                    ? "text-emerald-600 bg-emerald-50 hover:bg-emerald-100"
-                    : "text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
+                    ? "text-emerald-700 bg-white shadow-2xs"
+                    : "text-neutral-400 hover:text-neutral-900 hover:bg-white/40"
                 }`}
                 title={isOwnerLoggedIn ? "Store Owner Panel (Authenticated)" : "Store Owner Portal"}
               >
-                <ShieldCheck className="h-5 w-5" />
+                <ShieldCheck className="h-4 w-4" />
                 {isOwnerLoggedIn && (
-                  <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white animate-pulse" />
+                  <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-emerald-500 ring-1 ring-white animate-pulse" />
                 )}
               </button>
 
-              {isOwnerLoggedIn && (
+              <div className="w-[1px] h-3.5 bg-neutral-200" />
+
+              {/* Customer Profile Action */}
+              {currentUser ? (
+                <div className="flex items-center gap-1 bg-white pl-2 pr-1 py-0.5 rounded-full shadow-2xs">
+                  <span 
+                    className="text-[10px] font-mono font-bold tracking-wider text-neutral-800 uppercase max-w-[65px] truncate" 
+                    title={currentUser.displayName || currentUser.email || ""}
+                  >
+                    {currentUser.displayName?.split(" ")[0] || currentUser.email?.split("@")[0]}
+                  </span>
+                  {points > 0 && (
+                    <span className="text-[9px] bg-amber-50 text-amber-700 border border-amber-200 px-1 rounded-full font-bold flex items-center gap-0.5 shrink-0" title={`${points} loyalty points`}>
+                      {points}p
+                    </span>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (confirm("Sign out of your Aura profile?")) {
+                        onLogout();
+                      }
+                    }}
+                    className="p-1 hover:bg-red-50 text-neutral-400 hover:text-red-600 rounded-full transition-all cursor-pointer"
+                    title="Sign Out of Customer Profile"
+                  >
+                    <LogOut className="h-2.5 w-2.5" />
+                  </button>
+                </div>
+              ) : (
                 <button
-                  onClick={() => {
-                    if (confirm("Log out of Store Owner session?")) {
-                      onOwnerLogout();
-                    }
-                  }}
-                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
-                  title="Logout Store Owner Session"
+                  onClick={onOpenAuth}
+                  className="p-1.5 text-neutral-400 hover:text-neutral-900 hover:bg-white/40 rounded-full transition-all cursor-pointer"
+                  title="Customer Profile Login / Sign Up"
                 >
-                  <LogOut className="h-4 w-4" />
+                  <UserIcon className="h-4 w-4" />
                 </button>
+              )}
+
+              {/* Owner Portal Active Logout */}
+              {isOwnerLoggedIn && (
+                <>
+                  <div className="w-[1px] h-3.5 bg-neutral-200" />
+                  <button
+                    onClick={() => {
+                      if (confirm("Log out of Boutique Owner session?")) {
+                        onOwnerLogout();
+                      }
+                    }}
+                    className="p-1.5 text-neutral-400 hover:text-red-600 rounded-full transition-colors"
+                    title="Log Out of Owner Session"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                  </button>
+                </>
               )}
             </div>
 
-            {/* Order History Trigger */}
-            <button
-              onClick={onOpenOrders}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors relative"
-              title="Order History"
-            >
-              <Clock className="h-5 w-5" />
-            </button>
+            {/* 4. Shopping & History Group */}
+            <div className="flex items-center gap-1 border border-neutral-200 bg-white rounded-full p-1 shadow-2xs">
+              {/* Order History */}
+              <button
+                onClick={onOpenOrders}
+                className="p-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-full transition-all relative"
+                title="Curated Purchase History"
+              >
+                <Clock className="h-4 w-4" />
+              </button>
 
-            {/* Shopping Cart Button */}
-            <button
-              onClick={onOpenCart}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors relative"
-              aria-label="Shopping Cart"
-            >
-              <ShoppingBag className="h-5 w-5" />
-              {cartCount > 0 && (
-                <motion.span
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute -top-1 -right-1 h-5 w-5 bg-black text-white rounded-full flex items-center justify-center font-mono text-[10px] font-bold"
-                >
-                  {cartCount}
-                </motion.span>
-              )}
-            </button>
+              <div className="w-[1px] h-3.5 bg-neutral-100" />
+
+              {/* Shopping Bag */}
+              <button
+                onClick={onOpenCart}
+                className="p-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-full transition-all relative flex items-center justify-center"
+                aria-label="Shopping Bag"
+                title="Curated Bag"
+              >
+                <ShoppingBag className="h-4 w-4" />
+                {cartCount > 0 && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-1 -right-1 h-4 w-4 bg-neutral-900 text-white rounded-full flex items-center justify-center font-mono text-[9px] font-bold"
+                  >
+                    {cartCount}
+                  </motion.span>
+                )}
+              </button>
+            </div>
+
           </div>
         </div>
 
         {/* Mobile Categories & Search */}
-        <div className="py-2 border-t border-[#e2e8f0] md:hidden flex flex-col gap-2">
-          {/* Mobile Search */}
-          <div className="relative w-full">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-              <Search className="h-4 w-4 text-gray-400" />
-            </span>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search catalog..."
-              className="w-full pl-9 pr-4 py-2 bg-white border border-[#e2e8f0] rounded-lg text-xs placeholder-gray-400 focus:outline-none focus:border-gray-900"
-            />
+        <div className="py-3 border-t border-[#e2e8f0] md:hidden flex flex-col gap-2.5 bg-[#faf9f6]">
+          {/* Mobile Search & AI Guide Row */}
+          <div className="flex items-center gap-2 px-1">
+            <div className="relative flex-1">
+              <span className="absolute inset-y-0 left-0 flex-1 flex items-center pl-3">
+                <Search className="h-4 w-4 text-gray-400" />
+              </span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search catalog..."
+                className="w-full pl-9 pr-4 py-2 bg-white border border-[#e2e8f0] rounded-xl text-xs placeholder-gray-400 focus:outline-none focus:border-gray-900"
+              />
+            </div>
+            
+            {/* Mobile AI Guide Button */}
+            <button
+              onClick={onOpenAi}
+              className="flex items-center gap-1.5 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-700 text-xs font-semibold rounded-xl transition-all shadow-2xs cursor-pointer shrink-0"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-indigo-600 animate-pulse" />
+              <span>Guide</span>
+            </button>
           </div>
 
           {/* Mobile Category Scroll */}
-          <div className="flex space-x-1 overflow-x-auto pb-1 scrollbar-none">
+          <div className="flex space-x-1 overflow-x-auto pb-1 scrollbar-none px-1">
             {categories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1 text-xs font-medium rounded-full shrink-0 transition-colors ${
+                className={`px-3.5 py-1.5 text-xs font-medium rounded-full shrink-0 transition-colors ${
                   selectedCategory === cat
                     ? "bg-black text-white"
                     : "bg-white text-gray-600 border border-gray-200"

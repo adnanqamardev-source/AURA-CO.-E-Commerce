@@ -1,0 +1,71 @@
+{
+  "entities": {
+    "Cart": {
+      "title": "Shopping Cart",
+      "description": "User's persistent shopping cart state synchronized to Firebase.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The authenticated user's unique ID." },
+        "items": { "type": "array", "description": "Array of items currently in the cart." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last synchronization timestamp." }
+      },
+      "required": ["userId", "items", "updatedAt"]
+    },
+    "Order": {
+      "title": "Boutique Order",
+      "description": "An exquisite life-style purchase order record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique order ID." },
+        "userId": { "type": "string", "description": "Authenticated user's UID or 'guest'." },
+        "date": { "type": "string", "format": "date-time", "description": "ISO 8601 creation timestamp." },
+        "items": { "type": "array", "description": "List of cart items included in the order." },
+        "subtotal": { "type": "number", "description": "Subtotal before shipping or discount." },
+        "discount": { "type": "number", "description": "Applied promo code discount." },
+        "shipping": { "type": "number", "description": "Shipping charges." },
+        "total": { "type": "number", "description": "Total checkout price in display currency." },
+        "currency": { "type": "string", "description": "Display currency code (USD, EUR, GBP, INR)." },
+        "shippingDetails": { "type": "object", "description": "Buyer's physical location delivery contact details." },
+        "paymentMethod": { "type": "string", "enum": ["card", "upi"], "description": "Method of payment." },
+        "upiRefNo": { "type": "string", "description": "Optional NPCI UPI 12-digit verification token." },
+        "status": { "type": "string", "enum": ["Processing", "Shipped", "Delivered"], "description": "Fulfillment pipeline status." },
+        "trackingNumber": { "type": "string", "description": "Optional shipping carrier locator reference." }
+      },
+      "required": ["id", "userId", "date", "items", "subtotal", "discount", "shipping", "total", "currency", "shippingDetails", "paymentMethod", "status", "trackingNumber"]
+    },
+    "Product": {
+      "title": "Catalog Product",
+      "description": "Customized catalog arrival added by the boutique store owner.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string", "enum": ["Home", "Wellness", "Work"] },
+        "image": { "type": "string" },
+        "description": { "type": "string" },
+        "details": { "type": "array" },
+        "specs": { "type": "object" },
+        "options": { "type": "object" },
+        "rating": { "type": "number" },
+        "reviewCount": { "type": "number" },
+        "reviews": { "type": "array" }
+      },
+      "required": ["id", "name", "price", "category", "image", "description", "rating", "reviewCount", "reviews"]
+    }
+  },
+  "firestore": {
+    "carts/{userId}": {
+      "schema": "Cart",
+      "description": "Collection of active carts locked securely by owner UID."
+    },
+    "orders/{orderId}": {
+      "schema": "Order",
+      "description": "Exquisite order submissions database."
+    },
+    "products/{productId}": {
+      "schema": "Product",
+      "description": "Authorized custom items catalog added by the store owner."
+    }
+  }
+}

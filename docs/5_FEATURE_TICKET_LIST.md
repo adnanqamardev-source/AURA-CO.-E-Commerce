@@ -98,3 +98,28 @@ This list serves as a direct development backlog for the Aura & Co. Boutique app
   - Floating action bubble opens a conversational workspace.
   - Posts user queries to `/api/chat` and streams back answers safely.
   - Fallbacks gracefully to offline assistance if the API credentials are unset.
+
+---
+
+## Ticket #9: Firebase Multi-Protocol Customer Auth
+- **Feature Name:** Customer Accounts & Profiles
+- **Priority:** **MUST-HAVE**
+- **Description:** Integrate Firebase Authentication allowing customers to sign up and login via email, Google Sign-In, or secure Phone/SMS Verification.
+- **Dependencies:** None.
+- **Acceptance Criteria:**
+  - User profile modal supports tabs for email credentials, Google Sign-in, and Phone Auth.
+  - Phone Auth uses E.164 phone formats and supports invisible reCAPTCHA code verification.
+  - Correctly verifies and confirms 6-digit SMS OTP code, signing in the profile.
+
+---
+
+## Ticket #10: Firestore Cloud State Synchronizer
+- **Feature Name:** Firestore Database Synchronization
+- **Priority:** **MUST-HAVE**
+- **Description:** Enable full-duplex synchronization of shopping carts and purchase history records between active frontend state and Firestore collections.
+- **Dependencies:** Ticket #9.
+- **Acceptance Criteria:**
+  - Authenticated sessions dynamically save and sync active cart items to `carts/{userId}` in Firestore with debouncing.
+  - Fetch user cart and historical orders from Firestore collections `orders` instantly upon user login.
+  - Keep localStorage as an offline caching backup.
+  - Fallback cleanly to guest state upon user logout.

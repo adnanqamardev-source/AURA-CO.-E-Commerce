@@ -1,9 +1,10 @@
-import React, { useState } from "react";
-import { X, Trash2, ArrowRight, Minus, Plus, ShoppingBag, CreditCard, Check, Ticket } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { X, Trash2, ArrowRight, Minus, Plus, ShoppingBag, CreditCard, Check, Ticket, User as UserIcon } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { CartItem, ShippingDetails } from "../types";
 import { CurrencyCode, formatPrice } from "../utils/currency";
 import { UpiSettings } from "./OwnerPanelModal";
+import { User as FirebaseUser } from "firebase/auth";
 
 interface CartSidebarProps {
   isOpen: boolean;
@@ -14,6 +15,8 @@ interface CartSidebarProps {
   onPlaceOrder: (shipping: ShippingDetails, promoDiscount: number) => void;
   currency: CurrencyCode;
   upiSettings?: UpiSettings;
+  currentUser?: FirebaseUser | null;
+  onOpenAuth?: () => void;
 }
 
 export default function CartSidebar({
@@ -25,6 +28,8 @@ export default function CartSidebar({
   onPlaceOrder,
   currency,
   upiSettings,
+  currentUser = null,
+  onOpenAuth,
 }: CartSidebarProps) {
   const [checkoutStep, setCheckoutStep] = useState<"cart" | "shipping" | "confirm">("cart");
   const [couponCode, setCouponCode] = useState("");
@@ -39,6 +44,16 @@ export default function CartSidebar({
     city: "",
     zipCode: "",
   });
+
+  useEffect(() => {
+    if (currentUser) {
+      setShipping((prev) => ({
+        ...prev,
+        fullName: prev.fullName || currentUser.displayName || "",
+        email: prev.email || currentUser.email || "",
+      }));
+    }
+  }, [currentUser]);
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [paymentMethod, setPaymentMethod] = useState<"card" | "upi">("card");
@@ -179,6 +194,33 @@ export default function CartSidebar({
             <div className="flex-1 overflow-y-auto p-6">
               {checkoutStep === "cart" && (
                 <>
+                  {currentUser ? (
+                    <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-xl text-emerald-900 text-xs flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-1.5">
+                        <Check className="h-4 w-4 text-emerald-600" />
+                        <span className="font-medium">Profile Linked ({currentUser.displayName || currentUser.email})</span>
+                      </div>
+                      <span className="text-[9px] font-mono font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">Option B</span>
+                    </div>
+                  ) : (
+                    <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-xl text-indigo-900 text-xs flex flex-col gap-2 mb-4">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold">✨ Sync & Secure Your Curation</span>
+                        <span className="text-[9px] font-mono bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-bold">Option A/B</span>
+                      </div>
+                      <p className="text-[11px] text-indigo-800 leading-relaxed">
+                        Sign in to automatically synchronize your curated shopping bag and check past order history across devices!
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => onOpenAuth?.()}
+                        className="w-full mt-1 py-1.5 bg-black hover:bg-neutral-800 text-white rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-sm"
+                      >
+                        Authorize Profile Access
+                      </button>
+                    </div>
+                  )}
+
                   {cartItems.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64 text-center">
                       <ShoppingBag className="h-12 w-12 text-gray-300 mb-4" />

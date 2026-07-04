@@ -11,6 +11,12 @@ import OrderHistoryModal from "./components/OrderHistoryModal";
 import OwnerPanelModal, { UpiSettings } from "./components/OwnerPanelModal";
 import { CurrencyCode } from "./utils/currency";
 
+// Firebase Imports
+import { auth, db } from "./utils/firebase";
+import { onAuthStateChanged, signOut, User as FirebaseUser } from "firebase/auth";
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
+import UserAuthModal from "./components/UserAuthModal";
+
 export default function App() {
   // --- Editable Products Catalog with LocalStorage Persistence ---
   const [products, setProducts] = useState<Product[]>(() => {
@@ -54,6 +60,10 @@ export default function App() {
     }
   });
 
+  // --- Firebase Customer Auth States ---
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+
   // --- Filtering States ---
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<"All" | "Home" | "Wellness" | "Work">("All");
@@ -75,14 +85,32 @@ export default function App() {
   // --- Notification Toast states ---
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // --- Save to localStorage ---
+  // --- Save to localStorage & Firebase ---
   useEffect(() => {
     localStorage.setItem("aura_products", JSON.stringify(products));
   }, [products]);
 
+  // Sync Cart items to Firestore and local storage
   useEffect(() => {
     localStorage.setItem("aura_cart", JSON.stringify(cartItems));
-  }, [cartItems]);
+    
+    const syncCart = async () => {
+      if (currentUser) {
+        try {
+          await setDoc(doc(db, "carts", currentUser.uid), {
+            userId: currentUser.uid,
+            items: cartItems,
+            updatedAt: new Date().toISOString()
+          });
+        } catch (err) {
+          console.error("Error syncing cart to Firestore:", err);
+        }
+      }
+    };
+    
+    const timeoutId = setTimeout(syncCart, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [cartItems, currentUser]);
 
   useEffect(() => {
     localStorage.setItem("aura_orders", JSON.stringify(orders));
@@ -95,6 +123,75 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("aura_owner_logged_in", String(isOwnerLoggedIn));
   }, [isOwnerLoggedIn]);
+
+  // Listen to Firebase Auth State Changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setCurrentUser(user);
+      if (user) {
+        // Load user's cart from Firestore
+        try {
+          const cartDoc = await getDoc(doc(db, "carts", user.uid));
+          if (cartDoc.exists()) {
+            const data = cartDoc.data();
+            if (data && Array.isArray(data.items)) {
+              setCartItems(data.items);
+            }
+          } else {
+            // Cart doesn't exist in Firestore yet. If we have local items, upload them!
+            const localCart = localStorage.getItem("aura_cart");
+            const items = localCart ? JSON.parse(localCart) : [];
+            if (items.length > 0) {
+              await setDoc(doc(db, "carts", user.uid), {
+                userId: user.uid,
+                items,
+                updatedAt: new Date().toISOString()
+              });
+            }
+          }
+        } catch (err) {
+          console.error("Error loading cart from Firestore:", err);
+        }
+
+        // Load user's orders from Firestore
+        try {
+          const q = query(collection(db, "orders"), where("userId", "==", user.uid));
+          const querySnapshot = await getDocs(q);
+          const userOrders: Order[] = [];
+          querySnapshot.forEach((doc) => {
+            userOrders.push(doc.data() as Order);
+          });
+          userOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          if (userOrders.length > 0) {
+            setOrders(userOrders);
+          }
+        } catch (err) {
+          console.error("Error loading orders from Firestore:", err);
+        }
+      } else {
+        // Logged out: fallback to local storage
+        try {
+          const savedCart = localStorage.getItem("aura_cart");
+          setCartItems(savedCart ? JSON.parse(savedCart) : []);
+          const savedOrders = localStorage.getItem("aura_orders");
+          setOrders(savedOrders ? JSON.parse(savedOrders) : []);
+        } catch {
+          setCartItems([]);
+          setOrders([]);
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      showToast("Signed out of your Aura profile successfully.");
+    } catch (err) {
+      console.error("Sign out error:", err);
+    }
+  };
 
   // --- Calculate total loyalty points ---
   const totalPoints = orders.reduce((acc, order) => {
@@ -164,13 +261,14 @@ export default function App() {
     }
   };
 
-  const handlePlaceOrder = (shipping: ShippingDetails, promoDiscount: number) => {
+  const handlePlaceOrder = async (shipping: ShippingDetails, promoDiscount: number) => {
     const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
     const shippingFee = subtotal > 150 ? 0 : 15;
     const total = Math.max(0, subtotal + shippingFee - promoDiscount);
+    const orderId = `AURA-${Math.floor(100000 + Math.random() * 900000)}`;
 
     const newOrder: Order = {
-      id: `AURA-${Math.floor(100000 + Math.random() * 900000)}`,
+      id: orderId,
       date: new Date().toLocaleDateString("en-US", {
         year: "numeric",
         month: "short",
@@ -189,6 +287,15 @@ export default function App() {
     setOrders((prev) => [newOrder, ...prev]);
     setCartItems([]); // Clear cart
     setIsCartOpen(false);
+
+    try {
+      await setDoc(doc(db, "orders", orderId), {
+        ...newOrder,
+        userId: currentUser ? currentUser.uid : "guest"
+      });
+    } catch (err) {
+      console.error("Error saving order to Firestore:", err);
+    }
 
     // Show luxurious checkout feedback
     showToast(`✨ Exquisite Choice! Order ${newOrder.id} has been secured! Check order history for tracking details.`);
@@ -242,6 +349,9 @@ export default function App() {
         onOpenOwnerPanel={() => setIsOwnerOpen(true)}
         isOwnerLoggedIn={isOwnerLoggedIn}
         onOwnerLogout={() => setIsOwnerLoggedIn(false)}
+        currentUser={currentUser}
+        onOpenAuth={() => setIsAuthOpen(true)}
+        onLogout={handleLogout}
       />
 
       {/* Hero Curated Showcase Section */}
@@ -423,6 +533,14 @@ export default function App() {
         onPlaceOrder={handlePlaceOrder}
         currency={currency}
         upiSettings={upiSettings}
+        currentUser={currentUser}
+        onOpenAuth={() => setIsAuthOpen(true)}
+      />
+
+      {/* User Authentication Modal */}
+      <UserAuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
       />
 
       {/* Interactive AI Chat Concierge Overlay */}

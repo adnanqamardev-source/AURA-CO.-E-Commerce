@@ -40,6 +40,8 @@ To be the absolute gold-standard, lightweight digital showroom engine for boutiq
 | **Direct UPI Gateway Config** | Owner-only panel to toggle UPI checkout, edit the Business UPI VPA ID (handle), and modify the Merchant KYC display name with live QR preview. | Built | **Must-Have** |
 | **Catalog CRUD Manager** | Full capability for authorized owners to add new curated arrivals, edit product prices, change categories, upload image URLs, or wipe/reset standard inventory. | Built | **Must-Have** |
 | **AI Concierge Companion** | Server-side Gemini AI shopping assistant guiding customers on wellness routines, lifestyle pairings, and product inquiries. | Built | **Must-Have** |
+| **Firebase Customer Accounts** | Multi-protocol secure login (Email/Password, Google Sign-In, and **SMS Phone OTP Auth** using invisible reCAPTCHA). | Built | **Must-Have** |
+| **Firestore Cloud Sync** | High-performance real-time synchronization of customer shopping bags (Carts) and Loyalty logs (Orders) directly with Cloud Firestore. | Built | **Must-Have** |
 
 ---
 
@@ -47,15 +49,18 @@ To be the absolute gold-standard, lightweight digital showroom engine for boutiq
 1. **Discovery**:
    - User lands on the exquisite showroom. By default, prices are displayed in USD, with an elegant header letting them switch currency immediately.
    - User filters items by clicking "Home", "Wellness", or "Work" tabs, browsing custom animations.
-2. **Interactive Cart**:
+2. **Account Authentication (Optional but Recommended)**:
+   - User opens the **Vault / Profile** modal to authenticate using their preferred protocol (Email, Google, or direct SMS verification).
+   - Once authenticated, their physical checkout parameters and previous orders/loyalty status are securely retrieved from Firestore.
+3. **Interactive Cart**:
    - User clicks "Add to Bag", opening a sliding sidebar showing current selections, subtotal, and loyalty points accumulated.
    - User triggers "Checkout".
-3. **Checkout Selection**:
+4. **Checkout Selection**:
    - If UPI is enabled by the owner, the checkout screen prompts the user to select between **💳 Card Payment** or **🇮🇳 UPI QR Code**.
    - If **UPI QR Code** is selected, the app translates the cart total to INR dynamically, formats an NPCI string, and displays a secure QR Code via a trusted rendering service.
    - The user opens their phone's banking/UPI app (GPay, Paytm, PhonePe), scans the QR, authorizes payment, and notes the 12-digit receipt number.
    - The user inputs the 12-digit UTR No. and clicks "Complete Order".
-4. **Owner Administrative Loop**:
+5. **Owner Administrative Loop**:
    - The owner clicks the Shield icon in the navigation bar.
    - If unauthenticated, they are presented with a secure Lock gate requesting username (`admin`) and key (`admin123`).
    - Upon successful authorization, the owner enters the **Owner Dashboard**, structured in two clear tabs:
@@ -68,10 +73,10 @@ To be the absolute gold-standard, lightweight digital showroom engine for boutiq
 - **Zero Settlement Delay:** 100% of UPI payments bypass intermediaries and clear instantly to the merchant's bank account.
 - **Transaction Costs Saved:** Saves exactly 100% of traditional e-commerce payment gateway merchant service fees (MDR).
 - **Administrative Security:** 0% unauthorized access to the business catalog and UPI configuration panel.
+- **Durable User Data Retention:** 100% data preservation for consumer carts and orders across multiple distinct client devices.
 
 ---
 
 ## 7. Out of Scope (Version 1)
 - *Automatic Bank Statement Scraping:* Automated UPI deposit confirmation via corporate bank ledger APIs (currently checked manually by owner using the submitted 12-digit UTR).
-- *Customer Accounts:* Social login or password-based accounts for buyers (instead, client-side persistence in `localStorage` tracks order histories and loyalty points locally).
 - *Multi-Merchant Multi-Tenancy:* The software is single-instance optimized for one boutique owner at a time.
