@@ -112,27 +112,27 @@ export default function CartSidebar({
 
   const proceedToShipping = () => {
     if (cartItems.length === 0) return;
+    if (!currentUser) {
+      onOpenAuth?.();
+      return;
+    }
     setCheckoutStep("shipping");
   };
 
   const proceedToConfirm = () => {
+    if (!currentUser) {
+      onOpenAuth?.();
+      return;
+    }
     if (validateShippingForm()) {
       setCheckoutStep("confirm");
     }
   };
 
   const handleCompleteOrder = () => {
-    if (paymentMethod === "upi" && upiSettings?.enabled) {
-      const trimmedRef = upiRefNo.trim();
-      if (!trimmedRef) {
-        setUpiFormError("Please enter the 12-digit UPI Ref/UTR No. to confirm your payment.");
-        return;
-      }
-      if (!/^\d{12}$/.test(trimmedRef)) {
-        setUpiFormError("NPCI UPI Transaction Reference (UTR) must be exactly 12 numeric digits.");
-        return;
-      }
-      setUpiFormError("");
+    if (!currentUser) {
+      onOpenAuth?.();
+      return;
     }
 
     onPlaceOrder(shipping, discount);
@@ -496,16 +496,7 @@ export default function CartSidebar({
                             const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(upiUri)}`;
 
                             return (
-                              <div className="space-y-3 flex flex-col items-center">
-                                <div className="bg-gray-50 p-2 rounded-lg border border-gray-100 flex items-center justify-center w-[160px] h-[160px]">
-                                  <img
-                                    src={qrCodeUrl}
-                                    alt="UPI Payment QR Code"
-                                    className="w-full h-full object-contain"
-                                    referrerPolicy="no-referrer"
-                                  />
-                                </div>
-
+                              <div className="space-y-4 flex flex-col items-center">
                                 <div className="text-center space-y-0.5">
                                   <p className="font-semibold text-xs text-gray-900">{upiSettings.upiName}</p>
                                   <p className="font-mono text-[9px] text-gray-500">{upiSettings.upiId}</p>
@@ -516,37 +507,23 @@ export default function CartSidebar({
                                     Converted from {formatPrice(total, currency)} at 1 {currency} = ₹{rate} INR
                                   </p>
                                 </div>
+                                <div className="hidden md:flex bg-gray-50 p-2 rounded-lg border border-gray-100 items-center justify-center w-[160px] h-[160px]">
+                                  <img
+                                    src={qrCodeUrl}
+                                    alt="UPI Payment QR Code"
+                                    className="w-full h-full object-contain"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                </div>
+                                <a
+                                  href={upiUri}
+                                  className="w-full md:hidden py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-2 transition-all duration-300 shadow-md cursor-pointer"
+                                >
+                                  <span>Pay with UPI App</span>
+                                </a>
                               </div>
                             );
                           })()}
-
-                          {/* UPI Ref / UTR input field */}
-                          <div className="space-y-1">
-                            <label className="block text-[10px] font-mono font-bold uppercase text-gray-500 tracking-wider">
-                              UPI Transaction ID (UTR - 12 digits)
-                            </label>
-                            <input
-                              type="text"
-                              maxLength={12}
-                              placeholder="Enter 12-digit transaction number"
-                              value={upiRefNo}
-                              onChange={(e) => {
-                                const val = e.target.value.replace(/\D/g, "");
-                                setUpiRefNo(val);
-                                setUpiFormError("");
-                              }}
-                              className="w-full px-3 py-2 bg-[#faf9f6] border border-gray-200 rounded-lg text-xs font-mono placeholder-gray-400 uppercase tracking-widest focus:outline-none focus:border-black"
-                            />
-                            <p className="text-[8px] text-gray-400 leading-normal">
-                              Scan the QR with any UPI app (GPay, PhonePe, Paytm, BHIM) to settle, then copy the 12-digit Ref / UTR number from receipt.
-                            </p>
-                          </div>
-
-                          {upiFormError && (
-                            <p className="p-2 bg-red-50 border border-red-200 text-red-700 text-[10px] font-medium rounded-lg">
-                              ⚠️ {upiFormError}
-                            </p>
-                          )}
                         </div>
                       )}
                     </div>
@@ -604,13 +581,22 @@ export default function CartSidebar({
 
                 {/* Main Action Call Trigger Button */}
                 {checkoutStep === "cart" && (
-                  <button
-                    onClick={proceedToShipping}
-                    className="w-full py-4 bg-black hover:bg-neutral-800 text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-all duration-300 shadow-md cursor-pointer"
-                  >
-                    <span>Proceed to Shipping</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
+                  <div className="space-y-3">
+                    {!currentUser && (
+                      <div className="text-center p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                        <p className="text-[11px] text-amber-800 font-medium">
+                          ⚠️ Profile Authentication Required to Checkout
+                        </p>
+                      </div>
+                    )}
+                    <button
+                      onClick={proceedToShipping}
+                      className="w-full py-4 bg-black hover:bg-neutral-800 text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-all duration-300 shadow-md cursor-pointer"
+                    >
+                      <span>{currentUser ? "Proceed to Shipping" : "Sign In to Checkout"}</span>
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </div>
                 )}
 
                 {checkoutStep === "shipping" && (

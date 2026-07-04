@@ -96,17 +96,6 @@ app.post("/api/gemini/chat", async (req, res) => {
   }
 });
 
-export function verifyOwnerCredentials(username: string, passcode: string) {
-  const configuredUsername = (process.env.AURA_OWNER_USERNAME || "admin").trim().toLowerCase();
-  const configuredPasscode = process.env.AURA_OWNER_PASSCODE || "admin123";
-
-  if (username.trim().toLowerCase() === configuredUsername && passcode === configuredPasscode) {
-    return { success: true as const };
-  }
-
-  return { success: false as const, error: "Invalid credentials. Please verify your passcode." };
-}
-
 // API route for owner passcode verification
 app.post("/api/owner/verify-passcode", (req, res) => {
   try {
@@ -122,11 +111,13 @@ app.post("/api/owner/verify-passcode", (req, res) => {
       return res.status(400).json({ success: false, error: "Credentials exceed maximum allowed length." });
     }
 
-    const result = verifyOwnerCredentials(username, passcode);
-    if (result.success) {
+    const configuredUsername = (process.env.AURA_OWNER_USERNAME || "admin").trim().toLowerCase();
+    const configuredPasscode = process.env.AURA_OWNER_PASSCODE || "admin123";
+
+    if (username.trim().toLowerCase() === configuredUsername && passcode === configuredPasscode) {
       return res.json({ success: true });
     }
-    return res.status(401).json({ success: false, error: result.error });
+    return res.status(401).json({ success: false, error: "Invalid credentials. Please verify your passcode." });
   } catch (error: any) {
     console.error("Owner Auth Error:", error);
     return res.status(500).json({ success: false, error: "An internal server error occurred." });

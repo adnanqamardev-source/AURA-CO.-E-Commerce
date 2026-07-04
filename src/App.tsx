@@ -262,6 +262,11 @@ export default function App() {
   };
 
   const handlePlaceOrder = async (shipping: ShippingDetails, promoDiscount: number) => {
+    if (!currentUser) {
+      setIsAuthOpen(true);
+      showToast("Please sign in or register to place an order.");
+      return;
+    }
     const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
     const shippingFee = subtotal > 150 ? 0 : 15;
     const total = Math.max(0, subtotal + shippingFee - promoDiscount);
