@@ -1,0 +1,8 @@
+{
+  "name": "E-commerce Store",
+  "description": "A high-fidelity full-stack e-commerce store with curated products, an animated checkout system, order tracking, and an interactive server-side Gemini AI personal shopping assistant.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
