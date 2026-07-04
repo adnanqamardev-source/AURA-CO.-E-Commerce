@@ -111,9 +111,10 @@ app.post("/api/owner/verify-passcode", (req, res) => {
       return res.status(400).json({ success: false, error: "Credentials exceed maximum allowed length." });
     }
 
+    const configuredUsername = (process.env.AURA_OWNER_USERNAME || "admin").trim().toLowerCase();
     const configuredPasscode = process.env.AURA_OWNER_PASSCODE || "admin123";
 
-    if (username.trim().toLowerCase() === "admin" && passcode === configuredPasscode) {
+    if (username.trim().toLowerCase() === configuredUsername && passcode === configuredPasscode) {
       return res.json({ success: true });
     }
     return res.status(401).json({ success: false, error: "Invalid credentials. Please verify your passcode." });
@@ -146,8 +147,8 @@ async function setupServer() {
   });
 }
 
-// Only start the server if not running in a test environment
-if (process.env.NODE_ENV !== "test" && !process.env.VITEST) {
+// Only start the server if not running in a test environment or on Vercel
+if (process.env.NODE_ENV !== "test" && !process.env.VITEST && !process.env.VERCEL) {
   setupServer().catch((err) => {
     console.error("Failed to start server:", err);
   });
