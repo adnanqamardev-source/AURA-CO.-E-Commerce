@@ -122,3 +122,49 @@ export class RazorpayGateway extends PaymentGateway {
     return true;
   }
 }
+
+export class UpiGateway extends PaymentGateway {
+  private static initiationAttempts = 0;
+
+  protected getName(): string {
+    return "UpiGateway";
+  }
+
+  protected async validate(request: PaymentRequest): Promise<boolean> {
+    console.log(`[UPI] Validating request...`);
+    if (request.amount <= 0) return false;
+    if (request.currency.toUpperCase() !== "INR") {
+      console.log(`[UPI] UPI payments only support INR currency.`);
+      return false;
+    }
+    return true;
+  }
+
+  protected async initiate(request: PaymentRequest): Promise<boolean> {
+    console.log(`[UPI] Creating NPCI-compliant UPI payment intent...`);
+    
+    // NPCI standard UPI format: upi://pay?pa=recipient@upi&pn=RecipientName&am=Amount&cu=INR
+    const upiUrl = `upi://pay?pa=${request.receiver}&pn=${encodeURIComponent(request.receiver)}&am=${request.amount}&cu=INR`;
+    console.log(`[UPI] Generated Pay Link: ${upiUrl}`);
+
+    // Simulate network/banking server timeout
+    if (request.sender === "transient_fail" && UpiGateway.initiationAttempts < 1) {
+      UpiGateway.initiationAttempts++;
+      console.log(`[UPI] Simulating bank connection timeout error...`);
+      throw new Error("UPI network connection timeout");
+    }
+
+    if (request.sender === "fail_permanently") {
+      throw new Error("UPI permanent network failure");
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    return true;
+  }
+
+  protected async confirm(request: PaymentRequest): Promise<boolean> {
+    console.log(`[UPI] Verifying NPCI settlement status...`);
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    return true;
+  }
+}

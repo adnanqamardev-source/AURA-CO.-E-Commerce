@@ -1,5 +1,5 @@
 import { GatewayType, IPaymentGateway } from "../../types/payment";
-import { StripeGateway, RazorpayGateway } from "./gateways";
+import { StripeGateway, RazorpayGateway, UpiGateway } from "./gateways";
 import { PaymentGatewayProxy } from "./proxy";
 
 export class GatewayFactory {
@@ -12,6 +12,9 @@ export class GatewayFactory {
         break;
       case GatewayType.RAZORPAY:
         concreteGateway = new RazorpayGateway();
+        break;
+      case GatewayType.UPI:
+        concreteGateway = new UpiGateway();
         break;
       default:
         throw new Error(`Unsupported gateway type: ${type}`);

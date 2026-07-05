@@ -3,6 +3,7 @@ export type TransactionType = "ONE_TIME" | "RECURRING";
 export enum GatewayType {
   STRIPE = "STRIPE",
   RAZORPAY = "RAZORPAY",
+  UPI = "UPI",
 }
 
 export interface PaymentRequest {
