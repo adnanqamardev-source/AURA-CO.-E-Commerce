@@ -22,14 +22,13 @@ service cloud.firestore {
 
     // 1. Carts Collection
     match /carts/{userId} {
-      allow read, write: if isOwner(userId) && isValidId(userId);
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
     // 2. Orders Collection
     match /orders/{orderId} {
-      allow create: if isValidId(orderId);
-      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || (!isSignedIn() && resource.data.userId == 'guest');
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || request.auth.token.admin == true);
+      allow create: if true;
+      allow read, update: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
       allow delete: if false; // Orders cannot be deleted
     }
 
