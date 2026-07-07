@@ -7,7 +7,9 @@ import {
   createUserWithEmailAndPassword, 
   updateProfile,
   RecaptchaVerifier,
-  signInWithPhoneNumber
+  signInWithPhoneNumber,
+  GoogleAuthProvider,
+  signInWithPopup
 } from "firebase/auth";
 
 interface UserAuthModalProps {
@@ -151,6 +153,29 @@ export default function UserAuthModal({ isOpen, onClose }: UserAuthModalProps) {
         setErrorMsg("Email/Password Sign-In is not enabled in your Firebase Console. Please enable 'Email/Password' under the 'Sign-in method' tab to try out the demo account.");
       } else {
         setErrorMsg("Could not start demo profile. Try manual Sign Up.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setErrorMsg(null);
+    setLoading(true);
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+      setSuccessMsg("Logged in with Google successfully!");
+      setTimeout(() => {
+        onClose();
+        resetForm();
+      }, 1000);
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === "auth/operation-not-allowed") {
+        setErrorMsg("Google Sign-In is not enabled in your Firebase Console. Please go to your Firebase Console under 'Authentication' -> 'Sign-in method' and enable 'Google' provider.");
+      } else {
+        setErrorMsg(err.message || "Failed to sign in with Google.");
       }
     } finally {
       setLoading(false);
@@ -500,6 +525,15 @@ export default function UserAuthModal({ isOpen, onClose }: UserAuthModalProps) {
               <span className="flex-shrink mx-4 text-[10px] font-mono text-gray-400 uppercase tracking-widest">or</span>
               <div className="flex-grow border-t border-gray-200"></div>
             </div>
+
+            <button
+              onClick={handleGoogleSignIn}
+              className="w-full py-2.5 bg-white hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-semibold tracking-wide border border-gray-200 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm mb-2"
+              disabled={loading}
+            >
+              <span className="w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center font-bold text-[10px] font-sans">G</span>
+              <span>Sign in with Google Account</span>
+            </button>
 
             <button
               onClick={handleQuickDemo}

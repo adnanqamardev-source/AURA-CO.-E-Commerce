@@ -3,19 +3,19 @@
   "rewrites": [
     {
       "source": "/api/owner/verify-passcode",
-      "destination": "/api/verify-passcode"
+      "destination": "/api/verify-passcode.ts"
     },
     {
       "source": "/api/gemini/chat",
-      "destination": "/api/gemini-chat"
+      "destination": "/api/gemini-chat.ts"
     },
     {
       "source": "/api/payment/create-order",
-      "destination": "/api/payment-create-order"
+      "destination": "/api/payment-create-order.ts"
     },
     {
       "source": "/api/payment/verify",
-      "destination": "/api/payment-verify"
+      "destination": "/api/payment-verify.ts"
     },
     {
       "source": "/api/(.*)",

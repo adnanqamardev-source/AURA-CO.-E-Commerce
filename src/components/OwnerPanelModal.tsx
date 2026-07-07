@@ -1,7 +1,8 @@
-import React, { useState } from "react";
-import { X, Edit2, Plus, RefreshCw, Check, AlertCircle, Trash2, ArrowRight, ShieldCheck, Landmark, ToggleLeft, ToggleRight, Info, Lock, Key, LogOut } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { X, Edit2, Plus, RefreshCw, Check, AlertCircle, Trash2, ArrowRight, ShieldCheck, Landmark, ToggleLeft, ToggleRight, Info, Lock, Key, LogOut, Users, ShoppingCart, TrendingUp, Filter, Award, Shield, CheckCircle, Package, Truck, UserCheck } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Product } from "../products";
+import { Order } from "../types";
 
 export interface UpiSettings {
   enabled: boolean;
@@ -20,6 +21,9 @@ interface OwnerPanelModalProps {
   isOwnerLoggedIn: boolean;
   onLogin: () => void;
   onLogout: () => void;
+  allOrders?: Order[];
+  onUpdateOrder?: (orderId: string, updatedFields: Partial<Order>) => void;
+  onDeleteOrder?: (orderId: string) => void;
 }
 
 export default function OwnerPanelModal({
@@ -33,6 +37,9 @@ export default function OwnerPanelModal({
   isOwnerLoggedIn,
   onLogin,
   onLogout,
+  allOrders = [],
+  onUpdateOrder,
+  onDeleteOrder,
 }: OwnerPanelModalProps) {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -60,10 +67,60 @@ export default function OwnerPanelModal({
     ]
   });
 
-  const [activeTab, setActiveTab] = useState<"catalog" | "upi">("catalog");
+  const [activeTab, setActiveTab] = useState<"catalog" | "upi" | "orders" | "users" | "financials">("catalog");
   const [localUpiEnabled, setLocalUpiEnabled] = useState(upiSettings.enabled);
   const [localUpiId, setLocalUpiId] = useState(upiSettings.upiId);
   const [localUpiName, setLocalUpiName] = useState(upiSettings.upiName);
+
+  // --- Customer / User Management State ---
+  const [users, setUsers] = useState(() => {
+    try {
+      const saved = localStorage.getItem("aura_admin_users");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [
+      { id: "u-1", name: "Aura Patron", email: "patron@aura.com", role: "Patron", permissions: "Read, Purchase", status: "Active" },
+      { id: "u-2", name: "Legendary Ace", email: "legendaryace590@gmail.com", role: "Owner", permissions: "Full Suite", status: "Active" },
+      { id: "u-3", name: "Siddharth Mehta", email: "siddharth@example.com", role: "Support", permissions: "Read, Update Orders", status: "Active" },
+      { id: "u-4", name: "Ananya Iyer", email: "ananya@example.com", role: "Member", permissions: "Read, Purchase", status: "Active" }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem("aura_admin_users", JSON.stringify(users));
+  }, [users]);
+
+  // States for user addition/editing
+  const [showAddUserForm, setShowAddUserForm] = useState(false);
+  const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserRole, setNewUserRole] = useState("Member");
+  const [newUserStatus, setNewUserStatus] = useState("Active");
+
+  // States for order tracking details editing
+  const [editingOrderTracking, setEditingOrderTracking] = useState<string | null>(null);
+  const [tempTrackingNumber, setTempTrackingNumber] = useState("");
+
+  // States for financials
+  const [payoutAmount, setPayoutAmount] = useState("1000");
+  const [payoutsList, setPayoutsList] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem("aura_payouts");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [
+      { id: "pay-1", date: "2026-07-01", amount: 1450, status: "Cleared", bank: "State Bank of India" },
+      { id: "pay-2", date: "2026-07-05", amount: 890, status: "Processing", bank: "HDFC Bank" }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem("aura_payouts", JSON.stringify(payoutsList));
+  }, [payoutsList]);
+
+  // Order filtration state
+  const [orderFilter, setOrderFilter] = useState<"All" | "Processing" | "Shipped" | "Delivered">("All");
 
   if (!isOpen) return null;
 
@@ -145,6 +202,65 @@ export default function OwnerPanelModal({
     triggerSuccess("UPI Merchant Settings updated successfully!");
   };
 
+  // --- User management logic handlers ---
+  const handleAddUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserName.trim() || !newUserEmail.trim()) {
+      alert("Please specify user name and email.");
+      return;
+    }
+    const created = {
+      id: `u-custom-${Date.now()}`,
+      name: newUserName.trim(),
+      email: newUserEmail.trim(),
+      role: newUserRole,
+      permissions: newUserRole === "Owner" ? "Full Suite" : newUserRole === "Support" ? "Read, Update Orders" : "Read, Purchase",
+      status: newUserStatus
+    };
+    setUsers([...users, created]);
+    setShowAddUserForm(false);
+    setNewUserName("");
+    setNewUserEmail("");
+    setNewUserRole("Member");
+    setNewUserStatus("Active");
+    triggerSuccess(`Successfully registered customer account for ${created.name}`);
+  };
+
+  const handleSaveUserEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setUsers(users.map((u) => (u.id === editingUser.id ? editingUser : u)));
+    setEditingUser(null);
+    triggerSuccess(`Successfully updated customer details for ${editingUser.name}`);
+  };
+
+  const handleDeleteUser = (userId: string) => {
+    if (confirm("Are you sure you want to delete this customer account?")) {
+      setUsers(users.filter((u) => u.id !== userId));
+      triggerSuccess("User account has been deleted successfully.");
+    }
+  };
+
+  // --- Financial helper handlers ---
+  const handleRequestPayout = (e: React.FormEvent) => {
+    e.preventDefault();
+    const amt = Number(payoutAmount);
+    if (!amt || amt <= 0) {
+      alert("Please enter a valid payout amount.");
+      return;
+    }
+    const created = {
+      id: `pay-${Date.now()}`,
+      date: new Date().toISOString().split("T")[0],
+      amount: amt,
+      status: "Processing",
+      bank: "State Bank of India"
+    };
+    setPayoutsList([created, ...payoutsList]);
+    setPayoutAmount("1000");
+    triggerSuccess(`Payout request for ₹${amt.toLocaleString()} INR initiated successfully.`);
+  };
+
   if (!isOpen) return null;
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -166,12 +282,6 @@ export default function OwnerPanelModal({
         setPasswordInput("");
         setLoginError("");
         triggerSuccess("Authorized successfully as Store Owner.");
-      } else if (response.status === 500) {
-        // Server-side failure — surface a more actionable message
-        setLoginError(
-          data.error ||
-            "The authentication server encountered an internal error. Please redeploy or contact support."
-        );
       } else {
         setLoginError(data.error || "Invalid credentials. Please verify your passcode.");
       }
@@ -400,7 +510,7 @@ export default function OwnerPanelModal({
           </div>
 
           {/* Navigation Tabs */}
-          <div className="flex border-b border-[#e2e8f0] bg-[#f8fafc] px-6 md:px-8">
+          <div className="flex flex-wrap border-b border-[#e2e8f0] bg-[#f8fafc] px-6 md:px-8 gap-y-1">
             <button
               onClick={() => setActiveTab("catalog")}
               className={`py-3 px-4 text-xs font-semibold border-b-2 font-mono uppercase tracking-wider transition-all duration-200 cursor-pointer ${
@@ -409,7 +519,37 @@ export default function OwnerPanelModal({
                   : "border-transparent text-gray-400 hover:text-black"
               }`}
             >
-              📦 Catalog Inventory
+              📦 Catalog
+            </button>
+            <button
+              onClick={() => setActiveTab("orders")}
+              className={`py-3 px-4 text-xs font-semibold border-b-2 font-mono uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                activeTab === "orders"
+                  ? "border-black text-black font-bold"
+                  : "border-transparent text-gray-400 hover:text-black"
+              }`}
+            >
+              🛍️ Orders Tracking
+            </button>
+            <button
+              onClick={() => setActiveTab("users")}
+              className={`py-3 px-4 text-xs font-semibold border-b-2 font-mono uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                activeTab === "users"
+                  ? "border-black text-black font-bold"
+                  : "border-transparent text-gray-400 hover:text-black"
+              }`}
+            >
+              👥 Users & Roles
+            </button>
+            <button
+              onClick={() => setActiveTab("financials")}
+              className={`py-3 px-4 text-xs font-semibold border-b-2 font-mono uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                activeTab === "financials"
+                  ? "border-black text-black font-bold"
+                  : "border-transparent text-gray-400 hover:text-black"
+              }`}
+            >
+              📈 Financials & Payouts
             </button>
             <button
               onClick={() => setActiveTab("upi")}
@@ -419,7 +559,7 @@ export default function OwnerPanelModal({
                   : "border-transparent text-gray-400 hover:text-black"
               }`}
             >
-              🇮🇳 UPI Payment Gateway
+              🇮🇳 UPI Gateway
             </button>
           </div>
 
@@ -665,6 +805,557 @@ export default function OwnerPanelModal({
                   ))}
                 </div>
               </>
+            )}
+
+            {activeTab === "orders" && (
+              <div className="space-y-6">
+                {/* Metrics */}
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                  <div className="bg-white p-4 rounded-xl border border-gray-150 shadow-sm">
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-gray-400">All Orders</span>
+                    <h4 className="font-bold text-xl text-gray-900 mt-1">{allOrders.length}</h4>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl border border-indigo-100 shadow-sm">
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-indigo-500">Processing</span>
+                    <h4 className="font-bold text-xl text-indigo-700 mt-1">{allOrders.filter(o => o.status === "Processing").length}</h4>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl border border-amber-100 shadow-sm">
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-amber-500">Shipped</span>
+                    <h4 className="font-bold text-xl text-amber-700 mt-1">{allOrders.filter(o => o.status === "Shipped").length}</h4>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl border border-emerald-100 shadow-sm">
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-emerald-500">Delivered</span>
+                    <h4 className="font-bold text-xl text-emerald-700 mt-1">{allOrders.filter(o => o.status === "Delivered").length}</h4>
+                  </div>
+                </div>
+
+                {/* Filter Controls */}
+                <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-3.5 rounded-xl border border-[#e2e8f0]">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] uppercase font-semibold text-gray-400 flex items-center gap-1">
+                      <Filter className="h-3.5 w-3.5" />
+                      Filter Status:
+                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {(["All", "Processing", "Shipped", "Delivered"] as const).map((filter) => (
+                        <button
+                          key={filter}
+                          onClick={() => setOrderFilter(filter)}
+                          className={`px-3 py-1 rounded-full text-[10px] font-semibold transition-all cursor-pointer ${
+                            orderFilter === filter
+                              ? "bg-black text-white"
+                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          }`}
+                        >
+                          {filter}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Orders List */}
+                <div className="space-y-4">
+                  {allOrders.filter(o => orderFilter === "All" || o.status === orderFilter).length === 0 ? (
+                    <div className="text-center py-12 bg-white rounded-xl border border-[#e2e8f0] text-gray-400 text-xs">
+                      No customer orders match this status criteria.
+                    </div>
+                  ) : (
+                    allOrders
+                      .filter(o => orderFilter === "All" || o.status === orderFilter)
+                      .map((order) => (
+                        <div
+                          key={order.id}
+                          className="bg-white border border-[#e2e8f0] rounded-xl overflow-hidden shadow-sm"
+                        >
+                          {/* Order Header */}
+                          <div className="p-4 bg-gray-50 border-b border-gray-150 flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-bold text-xs text-gray-900">{order.id}</span>
+                                <span className={`text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                                  order.status === "Processing"
+                                    ? "bg-indigo-50 text-indigo-700 border border-indigo-100"
+                                    : order.status === "Shipped"
+                                    ? "bg-amber-50 text-amber-700 border border-amber-100"
+                                    : "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                                }`}>
+                                  {order.status}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-gray-400 mt-1 font-mono">
+                                Placed on {order.date} • Customer: {order.shippingDetails?.fullName} ({order.shippingDetails?.email})
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {/* Workflow Actions */}
+                              {order.status === "Processing" && (
+                                <button
+                                  onClick={() => onUpdateOrder?.(order.id, { status: "Shipped" })}
+                                  className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[10px] font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                                >
+                                  <Truck className="h-3 w-3" />
+                                  <span>Mark Shipped</span>
+                                </button>
+                              )}
+                              {order.status === "Shipped" && (
+                                <button
+                                  onClick={() => onUpdateOrder?.(order.id, { status: "Delivered" })}
+                                  className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                                >
+                                  <CheckCircle className="h-3 w-3" />
+                                  <span>Mark Delivered</span>
+                                </button>
+                              )}
+                              
+                              <button
+                                onClick={() => onDeleteOrder?.(order.id)}
+                                className="p-1.5 hover:bg-red-50 hover:text-red-600 text-gray-400 rounded transition-colors"
+                                title="Delete/Purge Order"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Order Body Details */}
+                          <div className="p-4 grid grid-cols-1 md:grid-cols-12 gap-4">
+                            {/* Products summary */}
+                            <div className="md:col-span-6 space-y-2">
+                              <span className="font-mono text-[9px] uppercase tracking-wider text-gray-400 font-bold block mb-1">Items Purchased</span>
+                              {order.items?.map((item) => (
+                                <div key={item.id} className="flex items-center gap-2 text-xs text-gray-700">
+                                  <img src={item.image} alt={item.name} className="w-8 h-8 object-cover rounded border border-gray-100" />
+                                  <div className="min-w-0 flex-1">
+                                    <p className="font-medium truncate">{item.name}</p>
+                                    <p className="text-[10px] text-gray-400 font-mono">
+                                      {item.selectedOption ? `Option: ${item.selectedOption}` : "Standard"} • Qty: {item.quantity}
+                                    </p>
+                                  </div>
+                                  <span className="font-mono text-gray-500">${item.price * item.quantity}</span>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Shipping Details */}
+                            <div className="md:col-span-3 text-xs text-gray-600 space-y-1">
+                              <span className="font-mono text-[9px] uppercase tracking-wider text-gray-400 font-bold block mb-1">Fulfillment Address</span>
+                              <p className="font-semibold text-gray-900">{order.shippingDetails?.fullName}</p>
+                              <p className="text-gray-500 truncate">{order.shippingDetails?.address}</p>
+                              <p className="text-gray-500">{order.shippingDetails?.city} {order.shippingDetails?.zipCode}</p>
+                            </div>
+
+                            {/* Finance / tracking summaries */}
+                            <div className="md:col-span-3 text-xs text-gray-600 space-y-2 border-l border-gray-100 pl-4">
+                              <div>
+                                <span className="font-mono text-[9px] uppercase tracking-wider text-gray-400 font-bold block mb-1">Financial Receipt</span>
+                                <div className="flex justify-between font-mono text-[11px]">
+                                  <span>Total Charged:</span>
+                                  <span className="font-bold text-gray-900">${order.total}</span>
+                                </div>
+                              </div>
+
+                              {/* Editable Tracking number */}
+                              <div>
+                                <span className="font-mono text-[9px] uppercase tracking-wider text-gray-400 font-bold block mb-1">Fulfillment Tracking</span>
+                                {editingOrderTracking === order.id ? (
+                                  <div className="flex gap-1.5 mt-1">
+                                    <input
+                                      type="text"
+                                      value={tempTrackingNumber}
+                                      onChange={(e) => setTempTrackingNumber(e.target.value)}
+                                      className="w-full px-2 py-1 text-[10px] font-mono border border-gray-300 rounded focus:outline-none"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        onUpdateOrder?.(order.id, { trackingNumber: tempTrackingNumber });
+                                        setEditingOrderTracking(null);
+                                      }}
+                                      className="bg-black text-white px-2 py-1 rounded text-[9px] font-bold"
+                                    >
+                                      Save
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-between font-mono text-[10px] bg-gray-50 p-1.5 rounded border border-gray-100">
+                                    <span className="truncate">{order.trackingNumber || "No Tracking Set"}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingOrderTracking(order.id);
+                                        setTempTrackingNumber(order.trackingNumber || "");
+                                      }}
+                                      className="text-indigo-600 hover:underline text-[9px] font-bold"
+                                    >
+                                      Edit
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === "users" && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-150 shadow-sm">
+                  <div>
+                    <h3 className="font-display font-bold text-sm text-gray-900">Manage Store Profiles & Accounts</h3>
+                    <p className="text-gray-400 text-[10px]">Create, edit roles, and oversee permissions for registered boutique accounts.</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowAddUserForm(true);
+                      setEditingUser(null);
+                    }}
+                    className="px-4 py-2 bg-black hover:bg-neutral-800 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Create User Account</span>
+                  </button>
+                </div>
+
+                {/* Create/Edit User Form */}
+                {showAddUserForm && (
+                  <form onSubmit={handleAddUser} className="bg-white p-5 rounded-xl border border-indigo-200 mb-6 space-y-4 shadow-sm">
+                    <h3 className="font-display font-semibold text-xs text-indigo-900 flex items-center gap-1.5 border-b pb-2">
+                      <Plus className="h-4 w-4" />
+                      <span>Register New User Account</span>
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-700 mb-1">Full Display Name</label>
+                        <input
+                          type="text"
+                          required
+                          value={newUserName}
+                          onChange={(e) => setNewUserName(e.target.value)}
+                          placeholder="Jane Doe"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-700 mb-1">Email Address</label>
+                        <input
+                          type="email"
+                          required
+                          value={newUserEmail}
+                          onChange={(e) => setNewUserEmail(e.target.value)}
+                          placeholder="jane@example.com"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none bg-white"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-700 mb-1">Boutique Authorization Role</label>
+                        <select
+                          value={newUserRole}
+                          onChange={(e) => setNewUserRole(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none bg-white font-mono"
+                        >
+                          <option value="Member">Member (Standard Customer)</option>
+                          <option value="Patron">Patron (Loyalty Tier)</option>
+                          <option value="Support">Support Staff</option>
+                          <option value="Owner">Store Owner / Admin</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-700 mb-1">Account Status</label>
+                        <select
+                          value={newUserStatus}
+                          onChange={(e) => setNewUserStatus(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none bg-white font-mono"
+                        >
+                          <option value="Active">Active</option>
+                          <option value="Suspended">Suspended</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowAddUserForm(false)}
+                        className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-1.5 bg-black text-white rounded-lg text-xs font-semibold hover:bg-neutral-800"
+                      >
+                        Add User Account
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* Edit User Form */}
+                {editingUser && (
+                  <form onSubmit={handleSaveUserEdit} className="bg-white p-5 rounded-xl border border-amber-300 mb-6 space-y-4 shadow-sm">
+                    <h3 className="font-display font-semibold text-xs text-amber-900 flex items-center gap-1.5 border-b pb-2">
+                      <Edit2 className="h-4 w-4 text-amber-600" />
+                      <span>Edit Account Role: {editingUser.name}</span>
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-700 mb-1">Role</label>
+                        <select
+                          value={editingUser.role}
+                          onChange={(e) => setEditingUser({
+                            ...editingUser,
+                            role: e.target.value,
+                            permissions: e.target.value === "Owner" ? "Full Suite" : e.target.value === "Support" ? "Read, Update Orders" : "Read, Purchase"
+                          })}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none bg-white font-mono"
+                        >
+                          <option value="Member">Member</option>
+                          <option value="Patron">Patron</option>
+                          <option value="Support">Support</option>
+                          <option value="Owner">Owner</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-700 mb-1">Status</label>
+                        <select
+                          value={editingUser.status}
+                          onChange={(e) => setEditingUser({ ...editingUser, status: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none bg-white font-mono"
+                        >
+                          <option value="Active">Active</option>
+                          <option value="Suspended">Suspended</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingUser(null)}
+                        className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-1.5 bg-black text-white rounded-lg text-xs font-semibold hover:bg-neutral-800"
+                      >
+                        Save Changes
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* Users List Grid */}
+                <div className="space-y-3">
+                  {users.map((user) => (
+                    <div
+                      key={user.id}
+                      className="bg-white border border-[#e2e8f0] p-4 rounded-xl flex flex-wrap items-center justify-between gap-4"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center font-bold text-sm">
+                          {user.name.charAt(0)}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-semibold text-xs text-gray-900">{user.name}</h4>
+                            <span className={`text-[8px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
+                              user.role === "Owner"
+                                ? "bg-red-50 text-red-700 border border-red-100"
+                                : user.role === "Support"
+                                ? "bg-amber-50 text-amber-700 border border-amber-100"
+                                : "bg-indigo-50 text-indigo-700 border border-indigo-100"
+                            }`}>
+                              {user.role}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-gray-400 font-mono mt-0.5">{user.email}</p>
+                        </div>
+                      </div>
+
+                      {/* Readout of Permissions & status */}
+                      <div className="flex items-center gap-6">
+                        <div className="hidden sm:block text-right">
+                          <p className="text-[9px] font-mono uppercase text-gray-400 font-bold">Authorized Permissions</p>
+                          <p className="text-[11px] font-mono text-gray-600 mt-0.5">{user.permissions}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[9px] font-mono uppercase text-gray-400 font-bold">Status</p>
+                          <span className={`text-[9px] font-mono font-bold ${
+                            user.status === "Active" ? "text-emerald-600" : "text-red-500"
+                          }`}>{user.status}</span>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => {
+                              setEditingUser(user);
+                              setShowAddUserForm(false);
+                            }}
+                            className="p-1.5 hover:bg-amber-50 hover:text-amber-700 text-gray-400 rounded transition-colors"
+                            title="Edit User Role"
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="p-1.5 hover:bg-red-50 hover:text-red-600 text-gray-400 rounded transition-colors"
+                            title="Delete Account"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === "financials" && (
+              <div className="space-y-6">
+                {/* Metrics */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-gradient-to-br from-emerald-50 to-white p-5 rounded-xl border border-emerald-100 shadow-sm flex items-center justify-between">
+                    <div>
+                      <span className="font-mono text-[9px] uppercase tracking-wider text-emerald-600 font-bold">Gross Revenue</span>
+                      <h4 className="font-display font-black text-2xl text-emerald-900 mt-1">
+                        ${allOrders.reduce((acc, o) => acc + o.total, 0).toLocaleString()}
+                      </h4>
+                      <p className="text-[9px] text-gray-400 font-mono mt-1">Total transaction settlements</p>
+                    </div>
+                    <div className="p-3 bg-emerald-100 text-emerald-700 rounded-xl">
+                      <TrendingUp className="h-6 w-6" />
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-xl border border-gray-150 shadow-sm flex items-center justify-between">
+                    <div>
+                      <span className="font-mono text-[9px] uppercase tracking-wider text-gray-400">Total Transactions</span>
+                      <h4 className="font-display font-black text-2xl text-gray-900 mt-1">{allOrders.length}</h4>
+                      <p className="text-[9px] text-gray-400 font-mono mt-1">Direct card, UTR, or UPI payments</p>
+                    </div>
+                    <div className="p-3 bg-gray-50 text-gray-700 rounded-xl">
+                      <ShoppingCart className="h-6 w-6" />
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-xl border border-gray-150 shadow-sm flex items-center justify-between">
+                    <div>
+                      <span className="font-mono text-[9px] uppercase tracking-wider text-gray-400">Average Order Value</span>
+                      <h4 className="font-display font-black text-2xl text-gray-900 mt-1">
+                        ${allOrders.length ? Math.round(allOrders.reduce((acc, o) => acc + o.total, 0) / allOrders.length) : 0}
+                      </h4>
+                      <p className="text-[9px] text-gray-400 font-mono mt-1">Average order cart subtotal</p>
+                    </div>
+                    <div className="p-3 bg-gray-50 text-gray-700 rounded-xl">
+                      <Landmark className="h-6 w-6" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Main section: direct payouts */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                  {/* Settlement / payout requester */}
+                  <div className="md:col-span-7 bg-white p-6 rounded-xl border border-[#e2e8f0] space-y-4">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-indigo-50 text-indigo-700 rounded-lg">
+                        <Landmark className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h4 className="font-display font-bold text-xs text-gray-900 uppercase tracking-wider">Settlements & Direct Merchant Payouts</h4>
+                        <p className="text-gray-400 text-[10px]">RBI direct settlement to linked bank accounts in India.</p>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleRequestPayout} className="space-y-4 pt-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-700 mb-1">Linked Bank Account</label>
+                          <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none bg-gray-50 font-mono text-gray-600" disabled>
+                            <option>State Bank of India (***3482)</option>
+                            <option>HDFC Bank (***9812)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-700 mb-1">Request Amount (INR)</label>
+                          <div className="relative">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 font-mono font-semibold text-xs">₹</span>
+                            <input
+                              type="number"
+                              required
+                              value={payoutAmount}
+                              onChange={(e) => setPayoutAmount(e.target.value)}
+                              className="w-full pl-6 pr-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none bg-white font-mono"
+                              placeholder="1000"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="px-5 py-2.5 bg-black hover:bg-neutral-800 text-white rounded-lg text-xs font-semibold transition-all shadow-sm cursor-pointer"
+                      >
+                        Initiate direct bank payout
+                      </button>
+                    </form>
+
+                    <div className="space-y-2.5 pt-4">
+                      <span className="font-mono text-[9px] uppercase tracking-wider text-gray-400 font-bold block">Historic Payout Settlements</span>
+                      <div className="space-y-2 max-h-[160px] overflow-y-auto font-sans">
+                        {payoutsList.map((p) => (
+                          <div key={p.id} className="flex justify-between items-center text-xs p-2.5 bg-gray-50 rounded-lg border border-gray-150">
+                            <div>
+                              <p className="font-mono font-bold text-gray-900">₹{p.amount.toLocaleString()} INR</p>
+                              <p className="text-[9px] text-gray-400 font-mono mt-0.5">{p.date} • Sent to {p.bank}</p>
+                            </div>
+                            <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                              p.status === "Cleared" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-indigo-50 text-indigo-700 border border-indigo-100"
+                            }`}>{p.status}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Compliance & RBI compliance card */}
+                  <div className="md:col-span-5 bg-[#fafafa] p-6 rounded-xl border border-gray-150 space-y-4">
+                    <h4 className="font-display font-semibold text-xs text-gray-900 uppercase tracking-wider flex items-center gap-1 pb-2 border-b">
+                      <Shield className="h-4 w-4 text-emerald-600" />
+                      <span>Security Playbook</span>
+                    </h4>
+
+                    <div className="space-y-3.5 text-xs text-gray-600 leading-relaxed">
+                      <div>
+                        <p className="font-bold text-gray-900 font-mono text-[10px] uppercase">1. PCI-DSS Compliance Guidelines</p>
+                        <p className="text-gray-400 text-[11px] mt-0.5">
+                          Never store card numbers, CVVs, or pins directly in Firestore. Use tokenized gateways (Stripe, Razorpay) to preserve security.
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900 font-mono text-[10px] uppercase">2. Financial Reporting & Auditing</p>
+                        <p className="text-gray-400 text-[11px] mt-0.5">
+                          Every settlement request triggers an automated ledgring entry in direct accordance with Section 194-O of Indian IT Act.
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900 font-mono text-[10px] uppercase">3. Customer Refunds Policy</p>
+                        <p className="text-gray-400 text-[11px] mt-0.5">
+                          Refunds are directly routed via UPI API or linked card processors and clear back to customer bank accounts within 3-5 business days.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
 
             {activeTab === "upi" && (

@@ -60,6 +60,9 @@ export default function App() {
     }
   });
 
+  // --- Owner level order list ---
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
+
   // --- Firebase Customer Auth States ---
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -125,6 +128,81 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("aura_owner_logged_in", String(isOwnerLoggedIn));
   }, [isOwnerLoggedIn]);
+
+  // --- Owner Panel helper handlers ---
+  const fetchAllOrders = async () => {
+    try {
+      const q = collection(db, "orders");
+      const querySnapshot = await getDocs(q);
+      const ordersList: Order[] = [];
+      querySnapshot.forEach((doc) => {
+        ordersList.push(doc.data() as Order);
+      });
+      ordersList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      // Fallback if empty to use existing orders state
+      if (ordersList.length === 0 && orders.length > 0) {
+        setAllOrders(orders);
+      } else {
+        setAllOrders(ordersList);
+      }
+    } catch (err) {
+      console.error("Error fetching all orders for owner panel:", err);
+      // Fallback: use user's local orders merged with current orders list
+      setAllOrders(orders);
+    }
+  };
+
+  useEffect(() => {
+    if (isOwnerLoggedIn && isOwnerOpen) {
+      fetchAllOrders();
+    }
+  }, [isOwnerLoggedIn, isOwnerOpen]);
+
+  const handleUpdateOrder = async (orderId: string, updatedFields: Partial<Order>) => {
+    try {
+      // Find original order
+      const existingOrder = allOrders.find(o => o.id === orderId) || orders.find(o => o.id === orderId);
+      if (!existingOrder) return;
+
+      const mergedOrder = { ...existingOrder, ...updatedFields };
+
+      // Update in local states
+      setAllOrders((prev) => {
+        const found = prev.some(o => o.id === orderId);
+        if (found) {
+          return prev.map((o) => (o.id === orderId ? mergedOrder : o));
+        } else {
+          return [mergedOrder, ...prev];
+        }
+      });
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? mergedOrder : o))
+      );
+      
+      // Save to Firestore
+      await setDoc(doc(db, "orders", orderId), mergedOrder);
+      showToast(`Order ${orderId} successfully updated to status: ${updatedFields.status || "Updated"}`);
+    } catch (err) {
+      console.error("Error updating order in Firestore:", err);
+      showToast("Order status updated locally, but failed to sync to cloud database.");
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    try {
+      setAllOrders((prev) => prev.filter((o) => o.id !== orderId));
+      setOrders((prev) => prev.filter((o) => o.id !== orderId));
+      
+      // Delete from Firestore
+      const { deleteDoc } = await import("firebase/firestore");
+      await deleteDoc(doc(db, "orders", orderId));
+      showToast(`Order ${orderId} has been purged.`);
+    } catch (err) {
+      console.error("Error deleting order from Firestore:", err);
+      showToast("Order deleted locally.");
+    }
+  };
 
   // Listen to Firebase Auth State Changes
   useEffect(() => {
@@ -588,6 +666,9 @@ export default function App() {
         isOwnerLoggedIn={isOwnerLoggedIn}
         onLogin={() => setIsOwnerLoggedIn(true)}
         onLogout={() => setIsOwnerLoggedIn(false)}
+        allOrders={allOrders}
+        onUpdateOrder={handleUpdateOrder}
+        onDeleteOrder={handleDeleteOrder}
       />
 
       {/* Footer */}
