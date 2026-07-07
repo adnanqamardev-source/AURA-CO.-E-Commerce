@@ -6,6 +6,18 @@
       "destination": "/api/verify-passcode"
     },
     {
+      "source": "/api/gemini/chat",
+      "destination": "/api/gemini-chat"
+    },
+    {
+      "source": "/api/payment/create-order",
+      "destination": "/api/payment-create-order"
+    },
+    {
+      "source": "/api/payment/verify",
+      "destination": "/api/payment-verify"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api"
     },
