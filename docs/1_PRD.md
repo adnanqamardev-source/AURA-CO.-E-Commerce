@@ -40,8 +40,9 @@ To be the absolute gold-standard, lightweight digital showroom engine for boutiq
 | **Direct UPI Gateway Config** | Owner-only panel to toggle UPI checkout, edit the Business UPI VPA ID (handle), and modify the Merchant KYC display name with live QR preview. | Built | **Must-Have** |
 | **Catalog CRUD Manager** | Full capability for authorized owners to add new curated arrivals, edit product prices, change categories, upload image URLs, or wipe/reset standard inventory. | Built | **Must-Have** |
 | **AI Concierge Companion** | Server-side Gemini AI shopping assistant guiding customers on wellness routines, lifestyle pairings, and product inquiries. | Built | **Must-Have** |
-| **Firebase Customer Accounts** | Multi-protocol secure login (Email/Password, Google Sign-In, and **SMS Phone OTP Auth** using invisible reCAPTCHA). | Built | **Must-Have** |
+| **Firebase Customer Accounts** | Multi-protocol secure login (Email/Password, Google Sign-In, and **SMS Phone OTP Auth** using invisible reCAPTCHA) with clean, minimalist design. | Built | **Must-Have** |
 | **Firestore Cloud Sync** | High-performance real-time synchronization of customer shopping bags (Carts) and Loyalty logs (Orders) directly with Cloud Firestore. | Built | **Must-Have** |
+| **Compliance & Legal Footers** | Interactive footer providing persistent copyright details and launching modal windows for custom-tailored Terms & Conditions and Privacy Policy agreements. | Built | **Must-Have** |
 
 ---
 
@@ -50,7 +51,7 @@ To be the absolute gold-standard, lightweight digital showroom engine for boutiq
    - User lands on the exquisite showroom. By default, prices are displayed in USD, with an elegant header letting them switch currency immediately.
    - User filters items by clicking "Home", "Wellness", or "Work" tabs, browsing custom animations.
 2. **Account Authentication (Optional but Recommended)**:
-   - User opens the **Vault / Profile** modal to authenticate using their preferred protocol (Email, Google, or direct SMS verification).
+   - User opens the **Aura Account Portal / Profile** modal to authenticate using their preferred protocol (Email, Google, or direct SMS verification).
    - Once authenticated, their physical checkout parameters and previous orders/loyalty status are securely retrieved from Firestore.
 3. **Interactive Cart**:
    - User clicks "Add to Bag", opening a sliding sidebar showing current selections, subtotal, and loyalty points accumulated.
