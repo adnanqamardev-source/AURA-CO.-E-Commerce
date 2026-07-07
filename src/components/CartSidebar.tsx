@@ -104,6 +104,11 @@ export default function CartSidebar({
       return;
     }
 
+    // If we are paying with the real Razorpay checkout, we control steps manually in the callback
+    if (paymentMethod === "razorpay") {
+      return;
+    }
+
     const intervals = [1200, 1500, 1800, 1200];
     let currentStep = 0;
 
@@ -211,86 +216,136 @@ export default function CartSidebar({
     }
   };
 
-  const startPaying = () => {
+  const startPaying = async () => {
     if (!currentUser) {
       onOpenAuth?.();
       return;
     }
 
     if (paymentMethod === "razorpay") {
-      if (razorpayMethod === "card") {
-        if (cardHolder.trim().length < 3) {
-          setCardError("Please enter a valid cardholder name (at least 3 characters).");
-          return;
-        }
-        const rawNum = cardNumber.replace(/\s/g, "");
-        if (!/^\d+$/.test(rawNum)) {
-          setCardError("Card number must contain only numeric digits.");
-          return;
-        }
-        if (rawNum.length !== 16) {
-          setCardError("Card number must be exactly 16 digits.");
-          return;
+      setCardError("Initializing Razorpay Secure Checkout...");
+      
+      try {
+        // 1. Dynamically load Razorpay Checkout script
+        const isLoaded = await new Promise((resolve) => {
+          if ((window as any).Razorpay) {
+            resolve(true);
+            return;
+          }
+          const script = document.createElement("script");
+          script.src = "https://checkout.razorpay.com/v1/checkout.js";
+          script.onload = () => resolve(true);
+          script.onerror = () => resolve(false);
+          document.body.appendChild(script);
+        });
+
+        if (!isLoaded) {
+          throw new Error("Failed to load Razorpay SDK. Please check your network connection.");
         }
 
-        // Luhn algorithm verification
-        const checkLuhn = (num: string): boolean => {
-          let sum = 0;
-          let shouldDouble = false;
-          for (let i = num.length - 1; i >= 0; i--) {
-            let digit = parseInt(num.charAt(i), 10);
-            if (shouldDouble) {
-              digit *= 2;
-              if (digit > 9) digit -= 9;
+        // 2. Fetch Razorpay config
+        const configRes = await fetch("/api/razorpay/config");
+        if (!configRes.ok) {
+          throw new Error("Razorpay credentials are not fully configured on the server.");
+        }
+        const { keyId } = await configRes.json();
+
+        // 3. Create order on backend
+        const orderRes = await fetch("/api/razorpay/create-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: total,
+            currency: currency === "USD" ? "USD" : "INR",
+          }),
+        });
+
+        if (!orderRes.ok) {
+          const errData = await orderRes.json();
+          throw new Error(errData.error || "Failed to create order on server.");
+        }
+
+        const orderData = await orderRes.json();
+        setCardError("");
+
+        // 4. Trigger Razorpay checkout standard modal
+        const rzpOptions = {
+          key: keyId,
+          amount: orderData.amount,
+          currency: orderData.currency,
+          name: "AURA & CO.",
+          description: "Curated Luxury & Wellness Checkout",
+          order_id: orderData.id,
+          handler: async function (response: any) {
+            try {
+              setCheckoutStep("paying");
+              setPaymentProcessStep(1); // Verifying...
+
+              // Verify signature
+              const verifyRes = await fetch("/api/razorpay/verify-signature", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                }),
+              });
+
+              const verifyData = await verifyRes.json();
+
+              if (verifyRes.ok && verifyData.success) {
+                setPaymentProcessStep(2); // Authorized
+                setTimeout(() => {
+                  setPaymentProcessStep(3); // Syncing with database
+                  setTimeout(() => {
+                    // Success! Complete checkout
+                    onPlaceOrder(shipping, discount);
+                    setCheckoutStep("cart");
+                    setPromoDiscount(0);
+                    setCouponCode("");
+                    setCouponSuccess("");
+                    onClose();
+                  }, 1200);
+                }, 1200);
+              } else {
+                setCheckoutStep("confirm");
+                setCardError(verifyData.error || "Signature verification failed.");
+              }
+            } catch (err: any) {
+              console.error("Signature verification error:", err);
+              setCheckoutStep("confirm");
+              setCardError("Payment verification failed due to network error.");
             }
-            sum += digit;
-            shouldDouble = !shouldDouble;
-          }
-          return sum % 10 === 0;
+          },
+          prefill: {
+            name: shipping.fullName,
+            email: shipping.email,
+          },
+          notes: {
+            address: `${shipping.address}, ${shipping.city}, ${shipping.zipCode}`,
+          },
+          theme: {
+            color: "#000000",
+          },
+          modal: {
+            ondismiss: function () {
+              setCardError("Payment checkout cancelled.");
+            },
+          },
         };
 
-        if (!checkLuhn(rawNum)) {
-          setCardError("Invalid card number. Failed Luhn checksum validation (use Razorpay test card: 4111 1111 1111 1111).");
-          return;
-        }
+        const razorpayInstance = new (window as any).Razorpay(rzpOptions);
+        razorpayInstance.open();
 
-        if (!/^\d{2}\/\d{2}$/.test(cardExpiry)) {
-          setCardError("Expiry must be in MM/YY format.");
-          return;
-        }
-        const [month, yearShort] = cardExpiry.split("/").map(Number);
-        if (month < 1 || month > 12) {
-          setCardError("Expiry month must be between 01 and 12.");
-          return;
-        }
-
-        const expiryYear = 2000 + yearShort;
-        const today = new Date();
-        const currentYear = today.getFullYear();
-        const currentMonth = today.getMonth() + 1; // 1-12
-
-        if (expiryYear < currentYear || (expiryYear === currentYear && month < currentMonth)) {
-          setCardError("The credit card has expired.");
-          return;
-        }
-
-        if (!/^\d+$/.test(cardCvc)) {
-          setCardError("CVC must contain only numeric digits.");
-          return;
-        }
-        if (cardCvc.length < 3 || cardCvc.length > 4) {
-          setCardError("CVC must be 3 or 4 digits.");
-          return;
-        }
-        setCardError("");
-      } else if (razorpayMethod === "netbanking") {
-        if (!selectedBank) {
-          setCardError("Please select a bank for netbanking.");
-          return;
-        }
-        setCardError("");
+      } catch (err: any) {
+        console.error("Razorpay launching error:", err);
+        setCardError(err.message || "Failed to initiate Razorpay checkout.");
       }
-    } else if (paymentMethod === "gpay") {
+      return;
+    }
+
+    if (paymentMethod === "gpay") {
       const gpayVal = gpayUpi.trim();
       if (!gpayVal) {
         setCardError("Google Pay UPI ID is required.");
