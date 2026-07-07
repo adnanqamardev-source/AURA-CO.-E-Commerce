@@ -10,6 +10,10 @@
       "destination": "/api/gemini-chat.ts"
     },
     {
+      "source": "/api/payment/config",
+      "destination": "/api/payment-config.ts"
+    },
+    {
       "source": "/api/payment/create-order",
       "destination": "/api/payment-create-order.ts"
     },

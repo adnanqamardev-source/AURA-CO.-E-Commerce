@@ -129,8 +129,8 @@ app.post("/api/owner/verify-passcode", (req, res) => {
   }
 });
 
-// GET /api/razorpay/config - returns Razorpay key_id safely
-app.get("/api/razorpay/config", (req, res) => {
+// GET /api/payment/config - returns Razorpay key_id safely (Vercel rewrite destination)
+app.get("/api/payment/config", (req, res) => {
   const keyId = process.env.RAZORPAY_KEY_ID;
   if (!keyId) {
     return res.status(404).json({ error: "Razorpay key not configured on server" });
@@ -138,12 +138,12 @@ app.get("/api/razorpay/config", (req, res) => {
   res.json({ keyId });
 });
 
-// POST /api/razorpay/create-order - calls Razorpay API to create an order
-app.post("/api/razorpay/create-order", async (req, res) => {
+// POST /api/payment/create-order - calls Razorpay API to create an order (Vercel rewrite destination)
+app.post("/api/payment/create-order", async (req, res) => {
   try {
     const { amount, currency } = req.body;
     if (!amount || isNaN(Number(amount))) {
-      return res.status(400).json({ error: "Valid amount is required" });
+      return res.status(400).json({ error: "Valid amount in smallest unit is required" });
     }
 
     const keyId = process.env.RAZORPAY_KEY_ID;
@@ -153,8 +153,8 @@ app.post("/api/razorpay/create-order", async (req, res) => {
       return res.status(500).json({ error: "Razorpay credentials are not configured on the server." });
     }
 
-    // Razorpay amounts are in the smallest currency unit (e.g., paise for INR, cents for USD)
-    const smallestUnitAmount = Math.round(Number(amount) * 100);
+    // We expect amount to be in smallest unit (paise/cents) to align with Vercel serverless endpoint
+    const smallestUnitAmount = Math.round(Number(amount));
     const orderCurrency = (currency || "INR").toUpperCase();
 
     const authHeader = "Basic " + Buffer.from(`${keyId}:${keySecret}`).toString("base64");
@@ -179,19 +179,15 @@ app.post("/api/razorpay/create-order", async (req, res) => {
       return res.status(response.status).json({ error: data.error?.description || "Failed to create Razorpay order" });
     }
 
-    return res.json({
-      id: data.id,
-      amount: data.amount,
-      currency: data.currency,
-    });
+    return res.json(data);
   } catch (error: any) {
     console.error("Razorpay create-order Error:", error);
     return res.status(500).json({ error: "Internal server error occurred while creating order" });
   }
 });
 
-// POST /api/razorpay/verify-signature - verifies signature securely on backend
-app.post("/api/razorpay/verify-signature", async (req, res) => {
+// POST /api/payment/verify - verifies signature securely on backend (Vercel rewrite destination)
+app.post("/api/payment/verify", async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
@@ -210,9 +206,9 @@ app.post("/api/razorpay/verify-signature", async (req, res) => {
       .digest("hex");
 
     if (expectedSignature === razorpay_signature) {
-      return res.json({ success: true, message: "Payment verified successfully" });
+      return res.json({ success: true, verified: true, status: "success", message: "Payment verified successfully" });
     } else {
-      return res.status(400).json({ success: false, error: "Invalid payment signature verification failed." });
+      return res.status(400).json({ success: false, verified: false, status: "failure", error: "Invalid payment signature verification failed." });
     }
   } catch (error: any) {
     console.error("Razorpay verify-signature Error:", error);

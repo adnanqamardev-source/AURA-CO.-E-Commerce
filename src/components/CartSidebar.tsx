@@ -244,18 +244,18 @@ export default function CartSidebar({
         }
 
         // 2. Fetch Razorpay config
-        const configRes = await fetch("/api/razorpay/config");
+        const configRes = await fetch("/api/payment/config");
         if (!configRes.ok) {
           throw new Error("Razorpay credentials are not fully configured on the server.");
         }
         const { keyId } = await configRes.json();
 
-        // 3. Create order on backend
-        const orderRes = await fetch("/api/razorpay/create-order", {
+        // 3. Create order on backend (passing amount in smallest currency unit, i.e. cents/paise)
+        const orderRes = await fetch("/api/payment/create-order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            amount: total,
+            amount: Math.round(total * 100),
             currency: currency === "USD" ? "USD" : "INR",
           }),
         });
@@ -282,7 +282,7 @@ export default function CartSidebar({
               setPaymentProcessStep(1); // Verifying...
 
               // Verify signature
-              const verifyRes = await fetch("/api/razorpay/verify-signature", {
+              const verifyRes = await fetch("/api/payment/verify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -294,7 +294,7 @@ export default function CartSidebar({
 
               const verifyData = await verifyRes.json();
 
-              if (verifyRes.ok && verifyData.success) {
+              if (verifyRes.ok && (verifyData.success || verifyData.verified)) {
                 setPaymentProcessStep(2); // Authorized
                 setTimeout(() => {
                   setPaymentProcessStep(3); // Syncing with database

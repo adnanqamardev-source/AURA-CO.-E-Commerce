@@ -103,9 +103,11 @@ export default function App() {
       if (currentUser) {
         const path = `carts/${currentUser.uid}`;
         try {
+          // Deep clean any undefined properties by serializing/deserializing
+          const cleanCartItems = JSON.parse(JSON.stringify(cartItems));
           await setDoc(doc(db, "carts", currentUser.uid), {
             userId: currentUser.uid,
-            items: cartItems,
+            items: cleanCartItems,
             updatedAt: new Date().toISOString()
           });
         } catch (err) {
@@ -183,7 +185,8 @@ export default function App() {
       );
       
       // Save to Firestore
-      await setDoc(doc(db, "orders", orderId), mergedOrder);
+      const cleanMergedOrder = JSON.parse(JSON.stringify(mergedOrder));
+      await setDoc(doc(db, "orders", orderId), cleanMergedOrder);
       showToast(`Order ${orderId} successfully updated to status: ${updatedFields.status || "Updated"}`);
     } catch (err) {
       console.error("Error updating order in Firestore:", err);
@@ -225,9 +228,10 @@ export default function App() {
             const localCart = localStorage.getItem("aura_cart");
             const items = localCart ? JSON.parse(localCart) : [];
             if (items.length > 0) {
+              const cleanItems = JSON.parse(JSON.stringify(items));
               await setDoc(doc(db, "carts", user.uid), {
                 userId: user.uid,
-                items,
+                items: cleanItems,
                 updatedAt: new Date().toISOString()
               });
             }
@@ -380,10 +384,11 @@ export default function App() {
     setIsCartOpen(false);
 
     try {
-      await setDoc(doc(db, "orders", orderId), {
+      const cleanOrder = JSON.parse(JSON.stringify({
         ...newOrder,
         userId: currentUser ? currentUser.uid : "guest"
-      });
+      }));
+      await setDoc(doc(db, "orders", orderId), cleanOrder);
     } catch (err) {
       console.error("Error saving order to Firestore:", err);
       handleFirestoreError(err, OperationType.WRITE, `orders/${orderId}`);
