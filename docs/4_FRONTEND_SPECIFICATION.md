@@ -63,45 +63,21 @@ Typography is the core of our editorial identity. Fonts are imported from Google
 
 ### B. Chat AI Assistant Concierge Proxy
 - **Service Utilized:** Server-side Google Gemini SDK (`@google/genai`)
-- **Proxy Endpoint:** `/api/gemini/chat`
+- **Proxy Endpoint:** `/api/chat`
 - **JSON Payload (Input):**
   ```json
   {
     "message": "Do you have any Kyoto incense pairs?",
     "history": [
-      { "role": "user", "parts": [{ "text": "Hi" }] },
-      { "role": "model", "parts": [{ "text": "Welcome to Aura & Co. Boutique..." }] }
+      { "role": "user", "text": "Hi" },
+      { "role": "model", "text": "Welcome to Aura & Co. Boutique..." }
     ]
   }
   ```
 - **JSON Response (Output):**
   ```json
   {
-    "reply": "Yes, our Kyoto Brass Incense Holder matches perfectly with the Wellness catalog..."
+    "text": "Yes, our Kyoto Brass Incense Holder matches perfectly with the Wellness catalog..."
   }
   ```
 - **System Instructions Guard:** Restricts Gemini to answering questions specifically related to Aura & Co.'s catalogs, wellness philosophies, and order mechanics, while avoiding technical metadata exposure.
-
----
-
-## 6. Component Architecture
-
-### Component Hierarchy
-```
-App.tsx (Root State Machine)
-├── Navbar.tsx (Currency, Search, Navigation)
-├── ProductCard.tsx (Individual product display)
-├── ProductDetailModal.tsx (Detailed product view)
-├── CartSidebar.tsx (Cart drawer with checkout flow)
-├── UserAuthModal.tsx (Authentication overlay)
-├── OwnerPanelModal.tsx (Admin dashboard)
-├── OrderHistoryModal.tsx (Order history & loyalty)
-└── AiConcierge.tsx (AI chat companion)
-```
-
-### State Management
-- **Local State:** React `useState` hooks for UI state (modals, cart items, search)
-- **Persistence:** `localStorage` for guest mode, Firestore for authenticated users
-- **Hybrid Sync:** Automatic synchronization between local storage and Firestore on authentication
-
----

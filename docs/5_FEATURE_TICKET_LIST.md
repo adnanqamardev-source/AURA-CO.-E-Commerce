@@ -19,12 +19,12 @@ This list serves as a direct development backlog for the Aura & Co. Boutique app
 ## Ticket #2: Multi-Currency Exchange Engine
 - **Feature Name:** Multi-Currency Translation
 - **Priority:** **MUST-HAVE**
-- **Description:** Implement a conversion module allowing customers to toggle prices between USD, EUR, and GBP instantly with accurate formatting. INR is used internally for UPI payment conversion.
+- **Description:** Implement a conversion module allowing customers to toggle prices between USD, EUR, GBP, and INR instantly with accurate formatting.
 - **Dependencies:** Ticket #1.
 - **Acceptance Criteria:**
   - Header displays a currency selector dropdown.
   - Selecting a currency recalculates and updates all prices across the catalog and cart sidebar dynamically.
-  - Correct symbols ($, €, £) are printed alongside values.
+  - Correct symbols ($, €, £, ₹) are printed alongside values.
 
 ---
 
@@ -72,7 +72,7 @@ This list serves as a direct development backlog for the Aura & Co. Boutique app
 - **Dependencies:** Ticket #2, Ticket #3, Ticket #4.
 - **Acceptance Criteria:**
   - If UPI is enabled, checkout shows **💳 Card Payment** and **🇮🇳 UPI QR Code** buttons.
-  - Selecting UPI translates totals to INR (using dynamic exchange rates: 1 USD = 83.5 INR) and fetches a trusted QR image encoded with NPCI standard parameters.
+  - Selecting UPI translates totals to INR and fetches a trusted QR image encoded with NPCI standard parameters.
   - Shows clear display name and recipient UPI ID handles.
 
 ---
@@ -96,9 +96,8 @@ This list serves as a direct development backlog for the Aura & Co. Boutique app
 - **Dependencies:** None.
 - **Acceptance Criteria:**
   - Floating action bubble opens a conversational workspace.
-  - Posts user queries to `/api/gemini/chat` and streams back answers safely.
+  - Posts user queries to `/api/chat` and streams back answers safely.
   - Fallbacks gracefully to offline assistance if the API credentials are unset.
-  - Supports action tags for quick-add and view-product functionality.
 
 ---
 
@@ -124,5 +123,3 @@ This list serves as a direct development backlog for the Aura & Co. Boutique app
   - Fetch user cart and historical orders from Firestore collections `orders` instantly upon user login.
   - Keep localStorage as an offline caching backup.
   - Fallback cleanly to guest state upon user logout.
-
----

@@ -64,7 +64,11 @@ export default function CartSidebar({
   }, [currentUser]);
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "upi">("card");
+  const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "gpay" | "phonepe">("razorpay");
+  const [razorpayMethod, setRazorpayMethod] = useState<"card" | "netbanking">("card");
+  const [selectedBank, setSelectedBank] = useState<string>("");
+  const [gpayUpi, setGpayUpi] = useState<string>("");
+  const [phonepeUpi, setPhonepeUpi] = useState<string>("");
   const [upiRefNo, setUpiRefNo] = useState("");
   const [upiFormError, setUpiFormError] = useState("");
 
@@ -119,12 +123,17 @@ export default function CartSidebar({
           setPromoDiscount(0);
           setCouponCode("");
           setCouponSuccess("");
-          setPaymentMethod("card");
+          setPaymentMethod("razorpay");
+          setRazorpayMethod("card");
+          setSelectedBank("");
+          setGpayUpi("");
+          setPhonepeUpi("");
           setUpiRefNo("");
           setCardHolder("");
           setCardNumber("");
           setCardExpiry("");
           setCardCvc("");
+          setCardError("");
           onClose();
         }, 1000);
       }
@@ -208,27 +217,100 @@ export default function CartSidebar({
       return;
     }
 
-    if (paymentMethod === "card") {
-      if (!cardHolder.trim()) {
-        setCardError("Cardholder name is required.");
+    if (paymentMethod === "razorpay") {
+      if (razorpayMethod === "card") {
+        if (cardHolder.trim().length < 3) {
+          setCardError("Please enter a valid cardholder name (at least 3 characters).");
+          return;
+        }
+        const rawNum = cardNumber.replace(/\s/g, "");
+        if (!/^\d+$/.test(rawNum)) {
+          setCardError("Card number must contain only numeric digits.");
+          return;
+        }
+        if (rawNum.length !== 16) {
+          setCardError("Card number must be exactly 16 digits.");
+          return;
+        }
+
+        // Luhn algorithm verification
+        const checkLuhn = (num: string): boolean => {
+          let sum = 0;
+          let shouldDouble = false;
+          for (let i = num.length - 1; i >= 0; i--) {
+            let digit = parseInt(num.charAt(i), 10);
+            if (shouldDouble) {
+              digit *= 2;
+              if (digit > 9) digit -= 9;
+            }
+            sum += digit;
+            shouldDouble = !shouldDouble;
+          }
+          return sum % 10 === 0;
+        };
+
+        if (!checkLuhn(rawNum)) {
+          setCardError("Invalid card number. Failed Luhn checksum validation (use Razorpay test card: 4111 1111 1111 1111).");
+          return;
+        }
+
+        if (!/^\d{2}\/\d{2}$/.test(cardExpiry)) {
+          setCardError("Expiry must be in MM/YY format.");
+          return;
+        }
+        const [month, yearShort] = cardExpiry.split("/").map(Number);
+        if (month < 1 || month > 12) {
+          setCardError("Expiry month must be between 01 and 12.");
+          return;
+        }
+
+        const expiryYear = 2000 + yearShort;
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth() + 1; // 1-12
+
+        if (expiryYear < currentYear || (expiryYear === currentYear && month < currentMonth)) {
+          setCardError("The credit card has expired.");
+          return;
+        }
+
+        if (!/^\d+$/.test(cardCvc)) {
+          setCardError("CVC must contain only numeric digits.");
+          return;
+        }
+        if (cardCvc.length < 3 || cardCvc.length > 4) {
+          setCardError("CVC must be 3 or 4 digits.");
+          return;
+        }
+        setCardError("");
+      } else if (razorpayMethod === "netbanking") {
+        if (!selectedBank) {
+          setCardError("Please select a bank for netbanking.");
+          return;
+        }
+        setCardError("");
+      }
+    } else if (paymentMethod === "gpay") {
+      const gpayVal = gpayUpi.trim();
+      if (!gpayVal) {
+        setCardError("Google Pay UPI ID is required.");
         return;
       }
-      const rawNum = cardNumber.replace(/\s/g, "");
-      if (rawNum.length !== 16) {
-        setCardError("Card number must be exactly 16 digits.");
+      const gpayRegex = /^[a-zA-Z0-9.\-_]{3,30}@ok(axis|icici|sbi|hdfcbank)$/;
+      if (!gpayRegex.test(gpayVal)) {
+        setCardError("Invalid Google Pay UPI ID. Format should be username@oksbi, username@okaxis, username@okicici, or username@okhdfcbank.");
         return;
       }
-      if (!/^\d{2}\/\d{2}$/.test(cardExpiry)) {
-        setCardError("Expiry must be in MM/YY format.");
+      setCardError("");
+    } else if (paymentMethod === "phonepe") {
+      const phonepeVal = phonepeUpi.trim();
+      if (!phonepeVal) {
+        setCardError("PhonePe UPI ID is required.");
         return;
       }
-      const [month, year] = cardExpiry.split("/").map(Number);
-      if (month < 1 || month > 12) {
-        setCardError("Expiry month must be between 01 and 12.");
-        return;
-      }
-      if (cardCvc.length < 3 || cardCvc.length > 4) {
-        setCardError("CVC must be 3 or 4 digits.");
+      const phonepeRegex = /^[a-zA-Z0-9.\-_]{3,30}@(ybl|axl|ibl)$/;
+      if (!phonepeRegex.test(phonepeVal)) {
+        setCardError("Invalid PhonePe UPI ID. Format should be username@ybl, username@axl, or username@ibl.");
         return;
       }
       setCardError("");
@@ -534,134 +616,236 @@ export default function CartSidebar({
                   </div>
 
                   {/* Payment Method Selector */}
-                  {upiSettings?.enabled ? (
-                    <div className="space-y-3">
-                      <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-500">
-                        Choose Payment Option:
-                      </h3>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setPaymentMethod("card")}
-                          className={`p-3 rounded-xl border text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition-all ${
-                            paymentMethod === "card"
-                              ? "border-black bg-black text-white shadow-sm"
-                              : "border-[#e2e8f0] bg-white text-gray-700 hover:border-gray-400"
-                          }`}
-                        >
-                          <span>💳 Card Payment</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPaymentMethod("upi")}
-                          className={`p-3 rounded-xl border text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition-all ${
-                            paymentMethod === "upi"
-                              ? "border-black bg-black text-white shadow-sm"
-                              : "border-[#e2e8f0] bg-white text-gray-700 hover:border-gray-400"
-                          }`}
-                        >
-                          <span>🇮🇳 UPI QR Code</span>
-                        </button>
-                      </div>
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-500">
+                      Select Payment Option:
+                    </h3>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaymentMethod("razorpay");
+                          setCardError("");
+                        }}
+                        className={`py-3 px-1 rounded-xl border text-[11px] font-semibold flex flex-col items-center justify-center gap-1 transition-all ${
+                          paymentMethod === "razorpay"
+                            ? "border-[#3399cc] bg-[#3399cc]/5 text-indigo-950 ring-2 ring-[#3399cc]/20 font-bold"
+                            : "border-[#e2e8f0] bg-white text-gray-600 hover:border-gray-300"
+                        }`}
+                      >
+                        <span className="text-sm">💳</span>
+                        <span>Razorpay</span>
+                      </button>
 
-                      {paymentMethod === "card" ? (
-                        <div className="bg-white border border-[#e2e8f0] p-4 rounded-xl space-y-4">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-mono font-bold uppercase text-gray-400 tracking-wider">
-                              Stripe secure payment inputs
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaymentMethod("gpay");
+                          setCardError("");
+                        }}
+                        className={`py-3 px-1 rounded-xl border text-[11px] font-semibold flex flex-col items-center justify-center gap-1 transition-all ${
+                          paymentMethod === "gpay"
+                            ? "border-[#4285F4] bg-[#4285F4]/5 text-blue-950 ring-2 ring-[#4285F4]/20 font-bold"
+                            : "border-[#e2e8f0] bg-white text-gray-600 hover:border-gray-300"
+                        }`}
+                      >
+                        <span className="text-sm">🟢</span>
+                        <span>Google Pay</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaymentMethod("phonepe");
+                          setCardError("");
+                        }}
+                        className={`py-3 px-1 rounded-xl border text-[11px] font-semibold flex flex-col items-center justify-center gap-1 transition-all ${
+                          paymentMethod === "phonepe"
+                            ? "border-[#5f259f] bg-[#5f259f]/5 text-purple-950 ring-2 ring-[#5f259f]/20 font-bold"
+                            : "border-[#e2e8f0] bg-white text-gray-600 hover:border-gray-300"
+                        }`}
+                      >
+                        <span className="text-sm">🟣</span>
+                        <span>PhonePe</span>
+                      </button>
+                    </div>
+
+                    {/* Razorpay Option Detail Panels */}
+                    {paymentMethod === "razorpay" && (
+                      <div className="bg-white border border-[#e2e8f0] rounded-xl overflow-hidden">
+                        {/* Razorpay Brand Header */}
+                        <div className="bg-[#132c4e] text-white p-3.5 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-white font-black tracking-tighter text-sm font-sans italic">
+                              razorpay
                             </span>
-                            <div className="flex gap-1 text-[10px] font-mono font-bold text-gray-400">
-                              <span>VISA</span>
-                              <span>•</span>
-                              <span>MC</span>
-                              <span>•</span>
-                              <span>AMEX</span>
-                            </div>
+                            <span className="bg-[#3399cc]/30 text-[#3399cc] text-[8px] font-mono font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                              SECURE CHECKOUT
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[8px] text-gray-300 font-mono uppercase tracking-wider">Amount to Pay</p>
+                            <p className="text-xs font-bold font-mono text-emerald-400">
+                              {formatPrice(total, currency)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Razorpay Inner Tabs */}
+                        <div className="p-4 space-y-4">
+                          <div className="flex gap-2 border-b border-gray-100 pb-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRazorpayMethod("card");
+                                setCardError("");
+                              }}
+                              className={`pb-1 text-xs font-semibold ${
+                                razorpayMethod === "card"
+                                  ? "text-[#3399cc] border-b-2 border-[#3399cc]"
+                                  : "text-gray-400 hover:text-gray-600"
+                              }`}
+                            >
+                              Pay via Card
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRazorpayMethod("netbanking");
+                                setCardError("");
+                              }}
+                              className={`pb-1 text-xs font-semibold ${
+                                razorpayMethod === "netbanking"
+                                  ? "text-[#3399cc] border-b-2 border-[#3399cc]"
+                                  : "text-gray-400 hover:text-gray-600"
+                              }`}
+                            >
+                              Netbanking
+                            </button>
                           </div>
 
-                          <div className="space-y-3">
-                            <div>
-                              <label className="block text-[10px] font-mono font-bold uppercase text-gray-500 tracking-wider mb-1">
-                                Cardholder Name
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="Jane Doe"
-                                value={cardHolder}
-                                onChange={(e) => {
-                                  setCardHolder(e.target.value);
-                                  setCardError("");
-                                }}
-                                className="w-full px-3 py-2 bg-[#faf9f6] border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-black"
-                              />
-                            </div>
-
-                            <div className="p-3 bg-[#faf9f6] border border-gray-200 rounded-lg space-y-3 relative">
-                              <div className="absolute right-2 top-2 bg-indigo-50 text-indigo-600 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border border-indigo-100">
-                                stripe.js iframe
-                              </div>
-
+                          {razorpayMethod === "card" ? (
+                            <div className="space-y-3">
                               <div>
-                                <label className="block text-[9px] font-mono font-bold uppercase text-gray-400 tracking-wider mb-1">
-                                  Card Number
+                                <label className="block text-[10px] font-mono font-bold uppercase text-gray-500 tracking-wider mb-1">
+                                  Cardholder Name
                                 </label>
                                 <input
                                   type="text"
-                                  placeholder="4242 4242 4242 4242"
-                                  maxLength={19}
-                                  value={cardNumber}
+                                  placeholder="Jane Doe"
+                                  value={cardHolder}
                                   onChange={(e) => {
-                                    setCardNumber(formatCardNumber(e.target.value));
+                                    setCardHolder(e.target.value);
                                     setCardError("");
                                   }}
-                                  className="w-full bg-transparent text-xs font-mono tracking-widest focus:outline-none"
+                                  className="w-full px-3 py-2 bg-[#faf9f6] border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-black"
                                 />
                               </div>
 
-                              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
+                              <div className="p-3 bg-[#faf9f6] border border-gray-200 rounded-lg space-y-3 relative">
+                                <div className="absolute right-2 top-2 bg-blue-50 text-[#3399cc] text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border border-blue-100 uppercase tracking-widest">
+                                  rzp secure frame
+                                </div>
+
                                 <div>
                                   <label className="block text-[9px] font-mono font-bold uppercase text-gray-400 tracking-wider mb-1">
-                                    Expiration Date
+                                    Card Number
                                   </label>
                                   <input
                                     type="text"
-                                    placeholder="MM / YY"
-                                    maxLength={5}
-                                    value={cardExpiry}
+                                    placeholder="4111 1111 1111 1111"
+                                    maxLength={19}
+                                    value={cardNumber}
                                     onChange={(e) => {
-                                      setCardExpiry(formatCardExpiry(e.target.value));
+                                      setCardNumber(formatCardNumber(e.target.value));
                                       setCardError("");
                                     }}
                                     className="w-full bg-transparent text-xs font-mono tracking-widest focus:outline-none"
                                   />
                                 </div>
-                                <div>
-                                  <label className="block text-[9px] font-mono font-bold uppercase text-gray-400 tracking-wider mb-1">
-                                    CVC
-                                  </label>
-                                  <input
-                                    type="text"
-                                    placeholder="•••"
-                                    maxLength={4}
-                                    value={cardCvc}
-                                    onChange={(e) => {
-                                      const val = e.target.value.replace(/\D/g, "");
-                                      setCardCvc(val);
-                                      setCardError("");
-                                    }}
-                                    className="w-full bg-transparent text-xs font-mono tracking-widest focus:outline-none"
-                                  />
+
+                                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
+                                  <div>
+                                    <label className="block text-[9px] font-mono font-bold uppercase text-gray-400 tracking-wider mb-1">
+                                      Expiration Date
+                                    </label>
+                                    <input
+                                      type="text"
+                                      placeholder="MM / YY"
+                                      maxLength={5}
+                                      value={cardExpiry}
+                                      onChange={(e) => {
+                                        setCardExpiry(formatCardExpiry(e.target.value));
+                                        setCardError("");
+                                      }}
+                                      className="w-full bg-transparent text-xs font-mono tracking-widest focus:outline-none"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[9px] font-mono font-bold uppercase text-gray-400 tracking-wider mb-1">
+                                      CVV
+                                    </label>
+                                    <input
+                                      type="text"
+                                      placeholder="•••"
+                                      maxLength={4}
+                                      value={cardCvc}
+                                      onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, "");
+                                        setCardCvc(val);
+                                        setCardError("");
+                                      }}
+                                      className="w-full bg-transparent text-xs font-mono tracking-widest focus:outline-none"
+                                    />
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </div>
 
-                          <div className="text-[10px] text-gray-400 leading-normal flex gap-1.5 items-start">
-                            <span className="text-emerald-500 font-bold">🔒</span>
-                            <span>
-                              Aura & Co. complies fully with PCI-DSS. Raw card numbers are tokenized in the Stripe Elements sandbox iframe and never touch our servers.
-                            </span>
-                          </div>
+                              <div className="text-[10px] text-gray-400 leading-normal flex gap-1.5 items-start">
+                                <span className="text-[#3399cc] font-bold">🔒</span>
+                                <span>
+                                  Raw card numbers are tokenized in the Razorpay Checkout elements secure sandbox and never touch our servers. Use a valid Luhn test card (e.g. 4111 1111 1111 1111).
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              <label className="block text-[10px] font-mono font-bold uppercase text-gray-500 tracking-wider mb-1">
+                                Select Your Bank
+                              </label>
+                              <div className="grid grid-cols-3 gap-2">
+                                {[
+                                  { code: "sbi", name: "State Bank of India", label: "SBI" },
+                                  { code: "hdfc", name: "HDFC Bank", label: "HDFC" },
+                                  { code: "icici", name: "ICICI Bank", label: "ICICI" },
+                                  { code: "axis", name: "Axis Bank", label: "AXIS" },
+                                  { code: "kotak", name: "Kotak Mahindra", label: "KOTAK" },
+                                  { code: "pnb", name: "Punjab National", label: "PNB" },
+                                ].map((bank) => (
+                                  <button
+                                    key={bank.code}
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedBank(bank.name);
+                                      setCardError("");
+                                    }}
+                                    className={`py-2 px-1 text-[10px] font-semibold border rounded-lg transition-all text-center ${
+                                      selectedBank === bank.name
+                                        ? "border-[#3399cc] bg-[#3399cc]/5 text-indigo-950 font-bold"
+                                        : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                                    }`}
+                                  >
+                                    {bank.label}
+                                  </button>
+                                ))}
+                              </div>
+                              {selectedBank && (
+                                <p className="text-[10px] text-emerald-600 font-medium mt-1">
+                                  Selected Bank: <span className="font-bold">{selectedBank}</span> (Simulated gateway link active)
+                                </p>
+                              )}
+                            </div>
+                          )}
 
                           {cardError && (
                             <p className="p-2.5 bg-red-50 border border-red-200 text-red-700 text-[10px] font-medium rounded-lg">
@@ -669,165 +853,177 @@ export default function CartSidebar({
                             </p>
                           )}
                         </div>
-                      ) : (
-                        <div className="bg-white border border-[#e2e8f0] p-4 rounded-xl space-y-4">
-                          <div className="text-center">
-                            <span className="bg-indigo-50 text-indigo-700 text-[9px] font-mono font-bold tracking-widest px-2 py-0.5 rounded uppercase">
-                              Indian UPI instant settlement
+                      </div>
+                    )}
+
+                    {/* Google Pay Detail Panels */}
+                    {paymentMethod === "gpay" && (
+                      <div className="bg-white border border-[#e2e8f0] rounded-xl overflow-hidden">
+                        {/* GPay Brand Header */}
+                        <div className="bg-[#1a1a1a] text-white p-3.5 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-white font-bold tracking-tight text-xs font-sans">
+                              Google Pay
+                            </span>
+                            <span className="bg-[#4285F4]/30 text-[#4285F4] text-[8px] font-mono font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                              INSTANT TRANSFER
                             </span>
                           </div>
-
-                          {/* Calculate UPI INR amount */}
-                          {(() => {
-                            const rate = currency === "USD" ? 83.5 : currency === "EUR" ? 90.0 : currency === "GBP" ? 106.0 : 1;
-                            const inrAmount = Math.round(total * rate);
-                            const upiUri = `upi://pay?pa=${upiSettings.upiId}&pn=${encodeURIComponent(upiSettings.upiName)}&am=${inrAmount}&cu=INR&tn=AuraOrder`;
-                            const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(upiUri)}`;
-
-                            return (
-                              <div className="space-y-4 flex flex-col items-center">
-                                <div className="text-center space-y-0.5">
-                                  <p className="font-semibold text-xs text-gray-900">{upiSettings.upiName}</p>
-                                  <p className="font-mono text-[9px] text-gray-500">{upiSettings.upiId}</p>
-                                  <p className="text-sm font-bold text-emerald-600 font-mono mt-1">
-                                    ₹{inrAmount.toLocaleString("en-IN")} INR
-                                  </p>
-                                  <p className="text-[9px] text-gray-400 font-mono">
-                                    Converted from {formatPrice(total, currency)} at 1 {currency} = ₹{rate} INR
-                                  </p>
-                                </div>
-                                <div className="hidden md:flex bg-gray-50 p-2 rounded-lg border border-gray-100 items-center justify-center w-[160px] h-[160px]">
-                                  <img
-                                    src={qrCodeUrl}
-                                    alt="UPI Payment QR Code"
-                                    className="w-full h-full object-contain"
-                                    referrerPolicy="no-referrer"
-                                  />
-                                </div>
-                                
-                                <div className="w-full p-3 bg-amber-50 border border-amber-200 rounded-xl text-[10px] text-amber-800 space-y-1 text-center font-medium">
-                                  <p>📱 Mobile: Deep-linking allows direct redirection to your payment apps.</p>
-                                  <p>💻 Desktop: Scan the QR code using BHIM, GPay, PhonePe or Paytm.</p>
-                                </div>
-
-                                <a
-                                  href={upiUri}
-                                  className="w-full md:hidden py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-2 transition-all duration-300 shadow-md cursor-pointer"
-                                >
-                                  <span>Pay with UPI App</span>
-                                </a>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="bg-white border border-[#e2e8f0] p-4 rounded-xl space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-mono font-bold uppercase text-gray-400 tracking-wider">
-                          Stripe secure payment inputs
-                        </span>
-                        <div className="flex gap-1 text-[10px] font-mono font-bold text-gray-400">
-                          <span>VISA</span>
-                          <span>•</span>
-                          <span>MC</span>
-                          <span>•</span>
-                          <span>AMEX</span>
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-[10px] font-mono font-bold uppercase text-gray-500 tracking-wider mb-1">
-                            Cardholder Name
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="Jane Doe"
-                            value={cardHolder}
-                            onChange={(e) => {
-                              setCardHolder(e.target.value);
-                              setCardError("");
-                            }}
-                            className="w-full px-3 py-2 bg-[#faf9f6] border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-black"
-                          />
-                        </div>
-
-                        <div className="p-3 bg-[#faf9f6] border border-gray-200 rounded-lg space-y-3 relative">
-                          <div className="absolute right-2 top-2 bg-indigo-50 text-indigo-600 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border border-indigo-100">
-                            stripe.js iframe
+                          <div className="text-right">
+                            <p className="text-[8px] text-gray-400 font-mono uppercase tracking-wider">Amount to Pay</p>
+                            <p className="text-xs font-bold font-mono text-emerald-400">
+                              {formatPrice(total, currency)}
+                            </p>
                           </div>
+                        </div>
 
+                        <div className="p-4 space-y-4">
                           <div>
-                            <label className="block text-[9px] font-mono font-bold uppercase text-gray-400 tracking-wider mb-1">
-                              Card Number
+                            <label className="block text-[10px] font-mono font-bold uppercase text-gray-500 tracking-wider mb-1">
+                              Google Pay VPA / UPI ID
                             </label>
                             <input
                               type="text"
-                              placeholder="4242 4242 4242 4242"
-                              maxLength={19}
-                              value={cardNumber}
+                              placeholder="username@okaxis"
+                              value={gpayUpi}
                               onChange={(e) => {
-                                setCardNumber(formatCardNumber(e.target.value));
+                                setGpayUpi(e.target.value);
                                 setCardError("");
                               }}
-                              className="w-full bg-transparent text-xs font-mono tracking-widest focus:outline-none"
+                              className="w-full px-3 py-2 bg-[#faf9f6] border border-gray-200 rounded-lg text-xs font-mono focus:outline-none focus:border-black"
                             />
+                            <p className="text-[9px] text-gray-400 mt-1">
+                              Requires GPay format: username@okaxis, username@okicici, username@oksbi, or username@okhdfcbank
+                            </p>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
-                            <div>
-                              <label className="block text-[9px] font-mono font-bold uppercase text-gray-400 tracking-wider mb-1">
-                                Expiration Date
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="MM / YY"
-                                maxLength={5}
-                                value={cardExpiry}
-                                onChange={(e) => {
-                                  setCardExpiry(formatCardExpiry(e.target.value));
-                                  setCardError("");
-                                }}
-                                className="w-full bg-transparent text-xs font-mono tracking-widest focus:outline-none"
-                              />
+                          {upiSettings?.enabled && (
+                            <div className="pt-3 border-t border-gray-100 flex flex-col items-center space-y-3">
+                              <span className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-widest">
+                                OR scan merchant QR code using GPay
+                              </span>
+                              
+                              {(() => {
+                                const rate = currency === "USD" ? 83.5 : currency === "EUR" ? 90.0 : currency === "GBP" ? 106.0 : 1;
+                                const inrAmount = Math.round(total * rate);
+                                const upiUri = `upi://pay?pa=${upiSettings.upiId}&pn=${encodeURIComponent(upiSettings.upiName)}&am=${inrAmount}&cu=INR&tn=AuraOrder`;
+                                const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiUri)}`;
+
+                                return (
+                                  <div className="flex flex-col items-center space-y-2">
+                                    <div className="p-2 bg-[#faf9f6] border border-gray-100 rounded-lg shadow-sm">
+                                      <img
+                                        src={qrCodeUrl}
+                                        alt="UPI QR Code"
+                                        className="w-[130px] h-[130px] object-contain"
+                                        referrerPolicy="no-referrer"
+                                      />
+                                    </div>
+                                    <p className="text-[10px] text-emerald-600 font-bold font-mono">
+                                      ₹{inrAmount.toLocaleString("en-IN")} INR
+                                    </p>
+                                    <p className="text-[9px] text-gray-400">
+                                      Scan dynamically mapped to {upiSettings.upiName} ({upiSettings.upiId})
+                                    </p>
+                                  </div>
+                                );
+                              })()}
                             </div>
-                            <div>
-                              <label className="block text-[9px] font-mono font-bold uppercase text-gray-400 tracking-wider mb-1">
-                                CVC
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="•••"
-                                maxLength={4}
-                                value={cardCvc}
-                                onChange={(e) => {
-                                  const val = e.target.value.replace(/\D/g, "");
-                                  setCardCvc(val);
-                                  setCardError("");
-                                }}
-                                className="w-full bg-transparent text-xs font-mono tracking-widest focus:outline-none"
-                              />
-                            </div>
-                          </div>
+                          )}
+
+                          {cardError && (
+                            <p className="p-2.5 bg-red-50 border border-red-200 text-red-700 text-[10px] font-medium rounded-lg">
+                              ⚠️ {cardError}
+                            </p>
+                          )}
                         </div>
                       </div>
+                    )}
 
-                      <div className="text-[10px] text-gray-400 leading-normal flex gap-1.5 items-start">
-                        <span className="text-emerald-500 font-bold">🔒</span>
-                        <span>
-                          Aura & Co. complies fully with PCI-DSS. Raw card numbers are tokenized in the Stripe Elements sandbox iframe and never touch our servers.
-                        </span>
+                    {/* PhonePe Detail Panels */}
+                    {paymentMethod === "phonepe" && (
+                      <div className="bg-white border border-[#e2e8f0] rounded-xl overflow-hidden">
+                        {/* PhonePe Brand Header */}
+                        <div className="bg-[#5f259f] text-white p-3.5 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-white font-bold tracking-tight text-xs font-sans">
+                              PhonePe Secure
+                            </span>
+                            <span className="bg-white/20 text-white text-[8px] font-mono font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                              VPA PAY
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[8px] text-purple-200 font-mono uppercase tracking-wider">Amount to Pay</p>
+                            <p className="text-xs font-bold font-mono text-emerald-300">
+                              {formatPrice(total, currency)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="p-4 space-y-4">
+                          <div>
+                            <label className="block text-[10px] font-mono font-bold uppercase text-gray-500 tracking-wider mb-1">
+                              PhonePe UPI ID
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="username@ybl"
+                              value={phonepeUpi}
+                              onChange={(e) => {
+                                setPhonepeUpi(e.target.value);
+                                setCardError("");
+                              }}
+                              className="w-full px-3 py-2 bg-[#faf9f6] border border-gray-200 rounded-lg text-xs font-mono focus:outline-none focus:border-black"
+                            />
+                            <p className="text-[9px] text-gray-400 mt-1">
+                              Requires PhonePe handle: username@ybl, username@axl, or username@ibl
+                            </p>
+                          </div>
+
+                          {upiSettings?.enabled && (
+                            <div className="pt-3 border-t border-gray-100 flex flex-col items-center space-y-3">
+                              <span className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-widest">
+                                OR scan merchant QR code using PhonePe
+                              </span>
+                              
+                              {(() => {
+                                const rate = currency === "USD" ? 83.5 : currency === "EUR" ? 90.0 : currency === "GBP" ? 106.0 : 1;
+                                const inrAmount = Math.round(total * rate);
+                                const upiUri = `upi://pay?pa=${upiSettings.upiId}&pn=${encodeURIComponent(upiSettings.upiName)}&am=${inrAmount}&cu=INR&tn=AuraOrder`;
+                                const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiUri)}`;
+
+                                return (
+                                  <div className="flex flex-col items-center space-y-2">
+                                    <div className="p-2 bg-[#faf9f6] border border-gray-100 rounded-lg shadow-sm">
+                                      <img
+                                        src={qrCodeUrl}
+                                        alt="UPI QR Code"
+                                        className="w-[130px] h-[130px] object-contain"
+                                        referrerPolicy="no-referrer"
+                                      />
+                                    </div>
+                                    <p className="text-[10px] text-purple-700 font-bold font-mono">
+                                      ₹{inrAmount.toLocaleString("en-IN")} INR
+                                    </p>
+                                    <p className="text-[9px] text-gray-400">
+                                      Scan dynamically mapped to {upiSettings.upiName} ({upiSettings.upiId})
+                                    </p>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          )}
+
+                          {cardError && (
+                            <p className="p-2.5 bg-red-50 border border-red-200 text-red-700 text-[10px] font-medium rounded-lg">
+                              ⚠️ {cardError}
+                            </p>
+                          )}
+                        </div>
                       </div>
-
-                      {cardError && (
-                        <p className="p-2.5 bg-red-50 border border-red-200 text-red-700 text-[10px] font-medium rounded-lg">
-                          ⚠️ {cardError}
-                        </p>
-                      )}
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   <button
                     onClick={() => setCheckoutStep("shipping")}

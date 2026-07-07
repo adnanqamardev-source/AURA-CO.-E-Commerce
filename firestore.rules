@@ -2,12 +2,12 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Global Safety Net
+    // Global Safety Net (Pillar 4 / Global Safety)
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Common Helpers
+    // Common Helpers (Pillar 3)
     function isSignedIn() {
       return request.auth != null;
     }
@@ -20,19 +20,46 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // 1. Carts Collection
-    match /carts/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    function incoming() {
+      return request.resource.data;
     }
 
-    // 2. Orders Collection
+    // Validation Blueprints (Pillar 2 / Schema Validation)
+    function isValidCart(data) {
+      return data.userId is string && data.userId.size() <= 128 &&
+             data.items is list && data.items.size() <= 100 &&
+             data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidOrder(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.date is string && data.date.size() <= 64 &&
+             data.items is list && data.items.size() <= 100 &&
+             data.subtotal is number &&
+             data.discount is number &&
+             data.shipping is number &&
+             data.total is number &&
+             data.shippingDetails is map &&
+             data.status is string && data.status.size() <= 64;
+    }
+
+    // 1. Carts Collection (Pillar 6 / Identity Integrity)
+    match /carts/{userId} {
+      allow get: if isOwner(userId);
+      allow write: if isOwner(userId) && isValidCart(incoming());
+    }
+
+    // 2. Orders Collection (Pillar 8 / Secure Query Enforcer)
     match /orders/{orderId} {
-      allow create: if true;
-      allow read, update: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && isValidOrder(incoming()) && incoming().userId == request.auth.uid;
+      allow get: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid && isValidOrder(incoming());
       allow delete: if false; // Orders cannot be deleted
     }
 
-    // 3. Products Collection
+    // 3. Products Collection (Pillar 8)
     match /products/{productId} {
       allow read: if true; // Public catalog access
       allow write: if isSignedIn(); // Authorized store actions

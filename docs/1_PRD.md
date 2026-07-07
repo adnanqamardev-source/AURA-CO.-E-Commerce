@@ -1,4 +1,4 @@
-# Product Requirements Document (PRD) — Aura & Co.
+# Product Requirements Document (PRD)
 
 ## 1. Problem Statement
 Many high-end, curated Indian lifestyle brands and boutique stores face friction when setting up seamless checkout flows for domestic Indian buyers. International payment gateways (like Stripe or PayPal) charge hefty transaction fees (2.5% to 4%+), require complex corporate registrations, and do not natively support the most dominant and preferred payment mechanism in India: **Unified Payments Interface (UPI)**. 
@@ -33,7 +33,7 @@ To be the absolute gold-standard, lightweight digital showroom engine for boutiq
 | Feature Name | Description | Status / Scope | Priority |
 | :--- | :--- | :--- | :--- |
 | **Interactive Curated Showcase** | High-contrast visual grid with filter tabs (All, Home, Wellness, Work) displaying exquisite product cards with hover micro-interactions. | Built | **Must-Have** |
-| **Multi-Currency Engine** | Real-time currency switching (USD, EUR, GBP) with instant price translation across the entire product catalog. | Built | **Must-Have** |
+| **Multi-Currency Engine** | Real-time currency switching (USD, EUR, GBP, INR) with instant price translation across the entire product catalog. | Built | **Must-Have** |
 | **Direct UPI QR Code Generation** | Generates an NPCI-compliant `upi://pay?pa=...` QR code preview inside the checkout drawer, dynamically converting cart totals to INR based on standard exchange rates. | Built | **Must-Have** |
 | **NPCI Transaction Verification (UTR)** | Client-side input forcing buyers to enter the 12-digit UPI Transaction Ref (UTR / Ref No.) from their banking receipt to authorize and place orders. | Built | **Must-Have** |
 | **Secure Owner Dashboard** | Private modal protected by a passcode credentials wall (`admin`/`admin123`) to prevent unauthorized public access. | Built | **Must-Have** |
@@ -80,5 +80,3 @@ To be the absolute gold-standard, lightweight digital showroom engine for boutiq
 ## 7. Out of Scope (Version 1)
 - *Automatic Bank Statement Scraping:* Automated UPI deposit confirmation via corporate bank ledger APIs (currently checked manually by owner using the submitted 12-digit UTR).
 - *Multi-Merchant Multi-Tenancy:* The software is single-instance optimized for one boutique owner at a time.
-
----

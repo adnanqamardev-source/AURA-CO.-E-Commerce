@@ -12,7 +12,7 @@ import OwnerPanelModal, { UpiSettings } from "./components/OwnerPanelModal";
 import { CurrencyCode } from "./utils/currency";
 
 // Firebase Imports
-import { auth, db } from "./utils/firebase";
+import { auth, db, handleFirestoreError, OperationType } from "./utils/firebase";
 import { onAuthStateChanged, signOut, User as FirebaseUser } from "firebase/auth";
 import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import UserAuthModal from "./components/UserAuthModal";
@@ -96,6 +96,7 @@ export default function App() {
     
     const syncCart = async () => {
       if (currentUser) {
+        const path = `carts/${currentUser.uid}`;
         try {
           await setDoc(doc(db, "carts", currentUser.uid), {
             userId: currentUser.uid,
@@ -104,6 +105,7 @@ export default function App() {
           });
         } catch (err) {
           console.error("Error syncing cart to Firestore:", err);
+          handleFirestoreError(err, OperationType.WRITE, path);
         }
       }
     };
@@ -130,6 +132,7 @@ export default function App() {
       setCurrentUser(user);
       if (user) {
         // Load user's cart from Firestore
+        const cartPath = `carts/${user.uid}`;
         try {
           const cartDoc = await getDoc(doc(db, "carts", user.uid));
           if (cartDoc.exists()) {
@@ -151,9 +154,11 @@ export default function App() {
           }
         } catch (err) {
           console.error("Error loading cart from Firestore:", err);
+          handleFirestoreError(err, OperationType.GET, cartPath);
         }
 
         // Load user's orders from Firestore
+        const ordersPath = "orders";
         try {
           const q = query(collection(db, "orders"), where("userId", "==", user.uid));
           const querySnapshot = await getDocs(q);
@@ -167,6 +172,7 @@ export default function App() {
           }
         } catch (err) {
           console.error("Error loading orders from Firestore:", err);
+          handleFirestoreError(err, OperationType.LIST, ordersPath);
         }
       } else {
         // Logged out: fallback to local storage
@@ -300,6 +306,7 @@ export default function App() {
       });
     } catch (err) {
       console.error("Error saving order to Firestore:", err);
+      handleFirestoreError(err, OperationType.WRITE, `orders/${orderId}`);
     }
 
     // Show luxurious checkout feedback

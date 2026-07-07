@@ -230,7 +230,7 @@ export default function OwnerPanelModal({
                       setUsernameInput(e.target.value);
                       setLoginError("");
                     }}
-                    autoComplete="username"
+                    placeholder="e.g. admin"
                     className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-black disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
@@ -251,6 +251,7 @@ export default function OwnerPanelModal({
                       setPasswordInput(e.target.value);
                       setLoginError("");
                     }}
+                    placeholder="e.g. admin123"
                     className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-black disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
@@ -396,19 +397,21 @@ export default function OwnerPanelModal({
           <div className="flex border-b border-[#e2e8f0] bg-[#f8fafc] px-6 md:px-8">
             <button
               onClick={() => setActiveTab("catalog")}
-              className={`py-3 px-4 text-xs font-semibold border-b-2 font-mono uppercase tracking-wider transition-all duration-200 cursor-pointer ${activeTab === "catalog"
+              className={`py-3 px-4 text-xs font-semibold border-b-2 font-mono uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                activeTab === "catalog"
                   ? "border-black text-black font-bold"
                   : "border-transparent text-gray-400 hover:text-black"
-                }`}
+              }`}
             >
               📦 Catalog Inventory
             </button>
             <button
               onClick={() => setActiveTab("upi")}
-              className={`py-3 px-4 text-xs font-semibold border-b-2 font-mono uppercase tracking-wider transition-all duration-200 cursor-pointer ${activeTab === "upi"
+              className={`py-3 px-4 text-xs font-semibold border-b-2 font-mono uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                activeTab === "upi"
                   ? "border-black text-black font-bold"
                   : "border-transparent text-gray-400 hover:text-black"
-                }`}
+              }`}
             >
               🇮🇳 UPI Payment Gateway
             </button>
