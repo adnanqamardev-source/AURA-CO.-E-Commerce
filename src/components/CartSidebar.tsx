@@ -66,7 +66,6 @@ export default function CartSidebar({
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "gpay" | "phonepe">("razorpay");
   const [razorpayMethod, setRazorpayMethod] = useState<"card" | "netbanking">("card");
-  const [razorpayGatewayMode, setRazorpayGatewayMode] = useState<"sandbox" | "live">("sandbox");
   const [selectedBank, setSelectedBank] = useState<string>("");
   const [gpayUpi, setGpayUpi] = useState<string>("");
   const [phonepeUpi, setPhonepeUpi] = useState<string>("");
@@ -106,7 +105,7 @@ export default function CartSidebar({
     }
 
     // If we are paying with the real Razorpay checkout, we control steps manually in the callback
-    if (paymentMethod === "razorpay" && razorpayGatewayMode === "live") {
+    if (paymentMethod === "razorpay") {
       return;
     }
 
@@ -224,35 +223,6 @@ export default function CartSidebar({
     }
 
     if (paymentMethod === "razorpay") {
-      if (razorpayGatewayMode === "sandbox") {
-        if (razorpayMethod === "card") {
-          if (!cardHolder.trim()) {
-            setCardError("Cardholder Name is required.");
-            return;
-          }
-          if (cardNumber.replace(/\s+/g, "").length < 12) {
-            setCardError("Please enter a valid card number.");
-            return;
-          }
-          if (cardExpiry.length !== 5) {
-            setCardError("Please enter a valid expiration date (MM/YY).");
-            return;
-          }
-          if (cardCvc.length < 3) {
-            setCardError("Please enter a valid 3 or 4 digit CVV/CVC.");
-            return;
-          }
-        } else {
-          if (!selectedBank) {
-            setCardError("Please select a bank for netbanking.");
-            return;
-          }
-        }
-        setCardError("");
-        setCheckoutStep("paying");
-        return;
-      }
-
       setCardError("Initializing Razorpay Secure Checkout...");
       
       try {
@@ -757,7 +727,7 @@ export default function CartSidebar({
 
                     {/* Razorpay Option Detail Panels */}
                     {paymentMethod === "razorpay" && (
-                      <div className="bg-white border border-[#e2e8f0] rounded-xl overflow-hidden">
+                      <div className="bg-white border border-[#e2e8f0] rounded-xl overflow-hidden shadow-xs">
                         {/* Razorpay Brand Header */}
                         <div className="bg-[#132c4e] text-white p-3.5 flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -765,7 +735,7 @@ export default function CartSidebar({
                               razorpay
                             </span>
                             <span className="bg-[#3399cc]/30 text-[#3399cc] text-[8px] font-mono font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
-                              SECURE CHECKOUT
+                              SECURE GATEWAY
                             </span>
                           </div>
                           <div className="text-right">
@@ -776,212 +746,23 @@ export default function CartSidebar({
                           </div>
                         </div>
 
-                        {/* Gateway Mode Switch */}
-                        <div className="px-4 pt-3 pb-2 border-b border-gray-100 flex items-center justify-between bg-neutral-50/50">
-                          <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider">
-                            GATEWAY INTERFACE:
-                          </span>
-                          <div className="flex bg-neutral-200/80 p-0.5 rounded-lg border border-neutral-300">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setRazorpayGatewayMode("sandbox");
-                                setCardError("");
-                              }}
-                              className={`px-2.5 py-1 rounded-md text-[9px] font-mono font-bold uppercase transition-all cursor-pointer ${
-                                razorpayGatewayMode === "sandbox"
-                                  ? "bg-white text-emerald-800 shadow-xs"
-                                  : "text-neutral-500 hover:text-neutral-900"
-                              }`}
-                            >
-                              Sandbox (Simulated)
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setRazorpayGatewayMode("live");
-                                setCardError("");
-                              }}
-                              className={`px-2.5 py-1 rounded-md text-[9px] font-mono font-bold uppercase transition-all cursor-pointer ${
-                                razorpayGatewayMode === "live"
-                                  ? "bg-white text-indigo-900 shadow-xs"
-                                  : "text-neutral-500 hover:text-neutral-900"
-                              }`}
-                            >
-                              Live Gateway
-                            </button>
+                        <div className="p-5 text-center bg-neutral-50/50">
+                          <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-2.5">
+                            <svg className="w-5 h-5 text-[#3399cc]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
                           </div>
-                        </div>
+                          <h4 className="text-xs font-semibold text-gray-800 mb-1">Official Razorpay Modal Checkout</h4>
+                          <p className="text-[11px] text-gray-500 leading-normal max-w-xs mx-auto mb-3">
+                            You will be redirected to the secure, official Razorpay hosted popup window to pay safely using Cards, UPI, Netbanking, or mobile wallets.
+                          </p>
 
-                        {razorpayGatewayMode === "sandbox" && (
-                          <div className="mx-4 mt-3 p-2 bg-emerald-50/70 border border-emerald-100 rounded-lg text-[10px] text-emerald-800 leading-normal font-medium">
-                            🌿 <strong>Seamless Sandbox Active:</strong> Fully tests database synchronization and webhook ledgers with any card, bypassing international or currency-level gateway restrictions.
+                          <div className="p-3 bg-indigo-50/60 border border-indigo-100 rounded-lg text-[10px] text-indigo-900 leading-relaxed font-medium text-left">
+                            💡 <strong>Testing Tip:</strong> Since Razorpay test keys from India do not support international cards (e.g. Visa/Mastercard USA test cards) or foreign currencies by default on standard test accounts, please select <strong>UPI (simulated)</strong> or <strong>Netbanking (any bank)</strong> inside the Razorpay modal to easily complete successful test payments and sync database orders instantly!
                           </div>
-                        )}
-                        {razorpayGatewayMode === "live" && (
-                          <div className="mx-4 mt-3 p-2 bg-amber-50/70 border border-amber-100 rounded-lg text-[10px] text-amber-800 leading-normal font-medium">
-                            ⚠️ <strong>Live Gateway Active:</strong> Invokes real Razorpay scripts. Note: Standard Razorpay test keys from India do not support international cards (e.g. Visa/Mastercard USA test cards) or foreign currencies by default unless international transactions are activated on your dashboard.
-                          </div>
-                        )}
-
-                        {/* Razorpay Inner Tabs */}
-                        <div className="p-4 space-y-4">
-                          <div className="flex gap-2 border-b border-gray-100 pb-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setRazorpayMethod("card");
-                                setCardError("");
-                              }}
-                              className={`pb-1 text-xs font-semibold ${
-                                razorpayMethod === "card"
-                                  ? "text-[#3399cc] border-b-2 border-[#3399cc]"
-                                  : "text-gray-400 hover:text-gray-600"
-                              }`}
-                            >
-                              Pay via Card
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setRazorpayMethod("netbanking");
-                                setCardError("");
-                              }}
-                              className={`pb-1 text-xs font-semibold ${
-                                razorpayMethod === "netbanking"
-                                  ? "text-[#3399cc] border-b-2 border-[#3399cc]"
-                                  : "text-gray-400 hover:text-gray-600"
-                              }`}
-                            >
-                              Netbanking
-                            </button>
-                          </div>
-
-                          {razorpayMethod === "card" ? (
-                            <div className="space-y-3">
-                              <div>
-                                <label className="block text-[10px] font-mono font-bold uppercase text-gray-500 tracking-wider mb-1">
-                                  Cardholder Name
-                                </label>
-                                <input
-                                  type="text"
-                                  placeholder="Jane Doe"
-                                  value={cardHolder}
-                                  onChange={(e) => {
-                                    setCardHolder(e.target.value);
-                                    setCardError("");
-                                  }}
-                                  className="w-full px-3 py-2 bg-[#faf9f6] border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-black"
-                                />
-                              </div>
-
-                              <div className="p-3 bg-[#faf9f6] border border-gray-200 rounded-lg space-y-3 relative">
-                                <div className="absolute right-2 top-2 bg-blue-50 text-[#3399cc] text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border border-blue-100 uppercase tracking-widest">
-                                  rzp secure frame
-                                </div>
-
-                                <div>
-                                  <label className="block text-[9px] font-mono font-bold uppercase text-gray-400 tracking-wider mb-1">
-                                    Card Number
-                                  </label>
-                                  <input
-                                    type="text"
-                                    placeholder="4111 1111 1111 1111"
-                                    maxLength={19}
-                                    value={cardNumber}
-                                    onChange={(e) => {
-                                      setCardNumber(formatCardNumber(e.target.value));
-                                      setCardError("");
-                                    }}
-                                    className="w-full bg-transparent text-xs font-mono tracking-widest focus:outline-none"
-                                  />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
-                                  <div>
-                                    <label className="block text-[9px] font-mono font-bold uppercase text-gray-400 tracking-wider mb-1">
-                                      Expiration Date
-                                    </label>
-                                    <input
-                                      type="text"
-                                      placeholder="MM / YY"
-                                      maxLength={5}
-                                      value={cardExpiry}
-                                      onChange={(e) => {
-                                        setCardExpiry(formatCardExpiry(e.target.value));
-                                        setCardError("");
-                                      }}
-                                      className="w-full bg-transparent text-xs font-mono tracking-widest focus:outline-none"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-[9px] font-mono font-bold uppercase text-gray-400 tracking-wider mb-1">
-                                      CVV
-                                    </label>
-                                    <input
-                                      type="text"
-                                      placeholder="•••"
-                                      maxLength={4}
-                                      value={cardCvc}
-                                      onChange={(e) => {
-                                        const val = e.target.value.replace(/\D/g, "");
-                                        setCardCvc(val);
-                                        setCardError("");
-                                      }}
-                                      className="w-full bg-transparent text-xs font-mono tracking-widest focus:outline-none"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="text-[10px] text-gray-400 leading-normal flex gap-1.5 items-start">
-                                <span className="text-[#3399cc] font-bold">🔒</span>
-                                <span>
-                                  Raw card numbers are tokenized in the Razorpay Checkout elements secure sandbox and never touch our servers. Use a valid Luhn test card (e.g. 4111 1111 1111 1111).
-                                </span>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="space-y-3">
-                              <label className="block text-[10px] font-mono font-bold uppercase text-gray-500 tracking-wider mb-1">
-                                Select Your Bank
-                              </label>
-                              <div className="grid grid-cols-3 gap-2">
-                                {[
-                                  { code: "sbi", name: "State Bank of India", label: "SBI" },
-                                  { code: "hdfc", name: "HDFC Bank", label: "HDFC" },
-                                  { code: "icici", name: "ICICI Bank", label: "ICICI" },
-                                  { code: "axis", name: "Axis Bank", label: "AXIS" },
-                                  { code: "kotak", name: "Kotak Mahindra", label: "KOTAK" },
-                                  { code: "pnb", name: "Punjab National", label: "PNB" },
-                                ].map((bank) => (
-                                  <button
-                                    key={bank.code}
-                                    type="button"
-                                    onClick={() => {
-                                      setSelectedBank(bank.name);
-                                      setCardError("");
-                                    }}
-                                    className={`py-2 px-1 text-[10px] font-semibold border rounded-lg transition-all text-center ${
-                                      selectedBank === bank.name
-                                        ? "border-[#3399cc] bg-[#3399cc]/5 text-indigo-950 font-bold"
-                                        : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
-                                    }`}
-                                  >
-                                    {bank.label}
-                                  </button>
-                                ))}
-                              </div>
-                              {selectedBank && (
-                                <p className="text-[10px] text-emerald-600 font-medium mt-1">
-                                  Selected Bank: <span className="font-bold">{selectedBank}</span> (Simulated gateway link active)
-                                </p>
-                              )}
-                            </div>
-                          )}
 
                           {cardError && (
-                            <p className="p-2.5 bg-red-50 border border-red-200 text-red-700 text-[10px] font-medium rounded-lg">
+                            <p className="mt-3 p-2.5 bg-red-50 border border-red-200 text-red-700 text-[10px] font-medium rounded-lg text-left">
                               ⚠️ {cardError}
                             </p>
                           )}
