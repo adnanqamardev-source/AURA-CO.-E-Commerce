@@ -1,6 +1,6 @@
 # AURA & CO. — Minimalist E‑Commerce (Aesthetic Lifestyle Shop)
 
-AURA & CO. is a curated, minimalist e‑commerce storefront showcasing premium lifestyle products — handcrafted homewares, refined desk accessories, and wellness essentials. It pairs a React + Vite frontend with a small Express server and Firebase for authentication, cart, and orders — designed as a boutique demo with an interactive AI shopping concierge.
+AURA & CO. is a curated, minimalist e‑commerce storefront showcasing premium lifestyle products — handcrafted homewares, refined desk accessories, and wellness essentials. It pairs a React + Vite frontend with an Express server and Firebase for authentication, cart, and orders — designed as a boutique demo with an interactive AI shopping concierge.
 
 ## Stack
 - Language(s): TypeScript (frontend + server)
@@ -12,22 +12,22 @@ AURA & CO. is a curated, minimalist e‑commerce storefront showcasing premium l
   - Google Gemini (via @google/genai) for the "Aura Guide" AI concierge
   - Tailwind CSS (via tailwindcss + @tailwindcss/vite)
   - lucide-react (icons)
+  - motion (animations)
   - esbuild / tsx / vitest for dev tooling & testing
 
-## What you’ll find in this repo
+## What you'll find in this repo
 Top-level files and folders:
-- .env.example — example environment variables
-- package.json, package-lock.json — scripts & dependencies
-- server.ts — Express server + API routes (development Vite middleware + production static serving)
-- vite.config.ts — Vite config
-- vercel.json — Vercel settings
-- firebase-applet-config.json, firebase-blueprint.json, firestore.rules — Firebase configuration & rules
-- index.html — SPA entry
-- src/ — frontend source (React components, styles, product catalog)
-- assets/ — images / static assets
-- docs/ — project docs
-- tests/ — vitest tests
-- tsconfig.json
+- `.env` — environment variables (create from .env.example)
+- `package.json`, `package-lock.json` — scripts & dependencies
+- `server.ts` — Express server + API routes (development Vite middleware + production static serving)
+- `vite.config.ts` — Vite config
+- `vercel.json` — Vercel settings
+- `firebase-applet-config.json`, `firebase-blueprint.json`, `firestore.rules` — Firebase configuration & rules
+- `index.html` — SPA entry
+- `src/` — frontend source (React components, styles, product catalog)
+- `api/` — Vercel serverless function entry point
+- `tests/` — vitest tests
+- `tsconfig.json`
 
 ## Project structure (annotated)
 src/
@@ -36,20 +36,33 @@ src/
   index.css              — global styles / Tailwind
   products.ts            — canonical product catalog (shared with server)
   types.ts               — shared TypeScript types (CartItem, Order, etc.)
+  types/                 — extended type definitions
+  │   └── payment.ts     — PaymentRequest, GatewayType and IPaymentGateway types
   components/            — UI components and modal overlays
-    AiConcierge.tsx
-    CartSidebar.tsx
-    Navbar.tsx
-    ProductCard.tsx
-    ProductDetailModal.tsx
-    OrderHistoryModal.tsx
-    OwnerPanelModal.tsx
-    UserAuthModal.tsx
+  │   AiConcierge.tsx           — AI chat floating drawer and logic
+  │   CartSidebar.tsx           — Shopping bag, shipping details, UPI checkout
+  │   Navbar.tsx                — Sticky top bar with navigation, currency, admin portal triggers
+  │   ProductCard.tsx           — Individual product card UI with options
+  │   ProductDetailModal.tsx    — Detailed product view modal
+  │   OrderHistoryModal.tsx     — Past purchase records and loyalty system
+  │   OwnerPanelModal.tsx       — Secured Lock screen + Store Admin Catalog & UPI gate controllers
+  │   UserAuthModal.tsx         — Firebase Multi-Protocol Authentication (Email, Google, Phone SMS)
+  controllers/           — Express controllers/routers
+  │   └── paymentController.ts  — Checkout API entry point
+  services/              — Service layer
+  │   └── payment/       — Payment gateway implementations
+  │       ├── factory.ts    — Gateway Factory
+  │       ├── gateways.ts   — Stripe, Razorpay, UPI gateway implementations
+  │       ├── proxy.ts      — PaymentGatewayProxy with exponential backoff
+  │       └── service.ts    — PaymentService (Singleton controller)
   utils/                 — firebase helpers, currency helpers, etc.
+    currency.ts          — Currency conversions (USD, EUR, GBP)
+    firebase.ts          — Firebase App, Firestore, and Auth initialization
 
 How it fits together:
 - The frontend (Vite + React) renders the product catalog and UI. App.tsx manages cart state (localStorage + Firestore sync), orders, owner panel, and opens modals.
 - server.ts exposes a small API used by the AI assistant (/api/gemini/chat) and an owner passcode check endpoint (/api/owner/verify-passcode). The server runs with Vite middleware in development and serves static assets in production.
+- On Vercel, the api/index.ts exports the app for serverless function handling.
 - products.ts contains the single source of truth product list which is imported on both client and server sides for consistent behavior.
 
 ## Quickstart — run locally
@@ -59,9 +72,11 @@ How it fits together:
    cd AURA-CO.-E-Commerce
    npm install
    ```
-2. Copy and edit environment variables:
-   - Copy `.env.example` to `.env` and fill in keys. See the **Environment variables** section below.
-   - Firebase config is provided in `firebase-applet-config.json`; ensure your Firebase project credentials are configured per your deployment approach.
+
+2. Set up environment variables:
+   - Create `.env` file with your secrets. See the **Environment variables** section below.
+   - Firebase config is provided in `firebase-applet-config.json`; ensure your Firebase project credentials are configured.
+
 3. Run in development (Vite HMR + Express middleware):
    ```bash
    npm run dev
@@ -83,27 +98,33 @@ How it fits together:
    ```
 
 ## Environment variables
-Store secrets in `.env` (do not commit). The repo includes `.env.example` as a starting point. Notable variables used by the project:
-- GEMINI_API_KEY — API key for Google Gemini (used by the `/api/gemini/chat` route)
-- AURA_OWNER_USERNAME — owner panel username (defaults to `admin` if unset)
-- AURA_OWNER_PASSCODE — owner panel passcode (defaults to `admin123` if unset)
-- Standard Firebase environment values (if you prefer env-based config instead of the JSON file)
+Store secrets in `.env` (do not commit). Required variables:
+- `GEMINI_API_KEY` — API key for Google Gemini (used by the `/api/gemini/chat` route)
+- `AURA_OWNER_USERNAME` — owner panel username (defaults to `admin` if unset)
+- `AURA_OWNER_PASSCODE` — owner panel passcode (defaults to `admin123` if unset)
 
-The server checks for GEMINI_API_KEY and will return a descriptive error if missing.
+Example `.env` file:
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
+AURA_OWNER_USERNAME=admin
+AURA_OWNER_PASSCODE=admin123
+```
 
 ## Firebase
-- Auth: customer sign in/out for cart & orders
-- Firestore collections used: `carts`, `orders`
+- Auth: customer sign in/out for cart & orders (Email/Password, Google, Phone SMS with invisible reCAPTCHA)
+- Firestore collections used: `carts`, `orders`, `products`
 - The client syncs cart data to Firestore for signed-in users; localStorage is the fallback when not signed in.
 - There are Firebase rules in `firestore.rules` and a `firebase-applet-config.json` file in the repo.
 
 ## API endpoints (server)
-- POST /api/gemini/chat
-  - Body: { message: string, history?: Array }
+- POST `/api/gemini/chat`
+  - Body: `{ message: string, history?: Array }`
   - Forwards the user message to the configured Gemini model using system instructions that include the product catalog.
-- POST /api/owner/verify-passcode
-  - Body: { username: string, passcode: string }
+- POST `/api/owner/verify-passcode`
+  - Body: `{ username: string, passcode: string }`
   - Verifies owner credentials against environment values.
+- POST `/api/payment/process`
+  - Payment gateway processing endpoint (extensible for future payment integrations)
 
 ## Development notes & security considerations
 - server.ts embeds the product catalog into the AI system instruction to ensure the AI only recommends products from the catalog.
@@ -114,6 +135,7 @@ The server checks for GEMINI_API_KEY and will return a descriptive error if miss
 ## Deployment
 - The repo includes a `vercel.json` — this project can be deployed to Vercel. Ensure secrets (GEMINI_API_KEY, Firebase credentials, owner passcode) are added via the Vercel dashboard.
 - For self-hosted deploys: build (`npm run build`) and run `node dist/server.cjs`. Set NODE_ENV=production and configure environment secrets.
+- The application supports multi-currency display (USD, EUR, GBP) with INR conversion for UPI payments.
 
 ## Contributing
 - Open an issue or a pull request. Suggested workflow:
@@ -129,5 +151,3 @@ The server checks for GEMINI_API_KEY and will return a descriptive error if miss
 ## Acknowledgements
 - Built with React, Vite, Tailwind, Firebase, and Google Gemini.
 - Icons by lucide-react.
-
-

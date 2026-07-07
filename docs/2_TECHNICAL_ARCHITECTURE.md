@@ -1,7 +1,7 @@
-# Technical Architecture Document — UsTogether
+# Technical Architecture Document — Aura & Co.
 
-**Version:** 1.1  
-**Date:** 2026-07-04  
+**Version:** 1.2  
+**Date:** 2026-07-07  
 **Status:** Active
 
 ## 1. Tech Stack Overview
@@ -13,9 +13,9 @@ This full-stack application operates on a modern, ultra-fast TypeScript ecosyste
 - **Backend Server:** Node.js + Express v4 + TypeScript.
 - **Server Dev Runner:** `tsx` (TypeScript Execute) for instantaneous direct execution in development.
 - **Production Bundle Compiler:** `vite` (for standard React assets) + `esbuild` compiling the backend server into a single bundled CommonJS (`dist/server.cjs`) to guarantee absolute environment portability and bypass Node's strict ESM resolution rules on cloud runtimes.
-- **AI Integration:** `@google/genai` (modern Gemini SDK) proxying AI chat queries through server-side endpoints (`/api/chat`) to protect credentials.
+- **AI Integration:** `@google/genai` (modern Gemini SDK) proxying AI chat queries through server-side endpoints (`/api/gemini/chat`) to protect credentials.
 - **Data Persistence Strategy:** Firebase Firestore + Local Storage Hybrid. Local state changes synchronize immediately to the user's browser `localStorage` for latency-free renders, and automatically sync to the secure Firebase Cloud Database (`db`) when the client is logged in.
-- **Authentication Services:** Firebase Auth supporting standard email/password, Google Account single-sign-on, and secure **Phone Number Verification with SMS OTP** (using invisible reCAPTCHA Verifiers).
+- **Authentication Services:** Firebase Auth supporting standard email/password, Google Sign-In, and secure **Phone Number Verification with SMS OTP** (using invisible reCAPTCHA Verifiers).
 
 ---
 
@@ -35,37 +35,40 @@ The project is structurally divided into modular directories separating layout d
 │   │   ├── AiConcierge.tsx           # AI chat floating drawer and logic
 │   │   ├── CartSidebar.tsx           # Shopping bag, shipping details, UPI checkout
 │   │   ├── Navbar.tsx                # Sticky top bar with navigation, currency, admin portal triggers
-│   │   ├── OrderHistoryModal.tsx     # Past purchase records and loyalty system
-│   │   ├── OwnerPanelModal.tsx       # Secured Lock screen + Store Admin Catalog & UPI gate controllers
-│   │   ├── UserAuthModal.tsx         # Firebase Multi-Protocol Authentication (Email, Google, Phone SMS)
-│   │   └── ProductCard.tsx           # Individual product card UI with options
+│   │   ├── OrderHistoryModal.tsx      # Past purchase records and loyalty system
+│   │   ├── OwnerPanelModal.tsx        # Secured Lock screen + Store Admin Catalog & UPI gate controllers
+│   │   ├── ProductDetailModal.tsx     # Product detail view modal
+│   │   ├── ProductCard.tsx           # Individual product card UI with options
+│   │   └── UserAuthModal.tsx         # Firebase Multi-Protocol Authentication (Email, Google, Phone SMS)
 │   ├── controllers/                  # Express controllers/routers
 │   │   └── paymentController.ts      # Checkout API entry point
 │   ├── services/
-│   │   └── payment/                  # Resilient payment gateway implementations
+│   │   └── payment/                  # Payment gateway implementations
 │   │       ├── factory.ts            # Gateway Factory (Proxy-wrapped providers)
-│   │       ├── gateways.ts           # Stripe & Razorpay concrete gate implementations
+│   │       ├── gateways.ts           # Stripe, Razorpay, UPI concrete gateway implementations
 │   │       ├── proxy.ts              # PaymentGatewayProxy with exponential backoff
 │   │       └── service.ts            # PaymentService (Singleton controller delegator)
+│   ├── types/
+│   │   └── payment.ts                # PaymentRequest, GatewayType and IPaymentGateway types
 │   ├── utils/
-│   │   ├── currency.ts               # Currency conversions, rates, symbol formatting
+│   │   ├── currency.ts               # Currency conversions, rates, symbol formatting (USD, EUR, GBP)
 │   │   └── firebase.ts               # Firebase App, Firestore, and Auth initialization module
 │   ├── App.tsx                       # Main layout coordinator and central state machine
 │   ├── index.css                     # Tailwind v4 import, custom font setups & theme variables
 │   ├── main.tsx                      # Vite React browser entrypoint
 │   ├── products.ts                   # Standard curated product database and categories
-│   ├── types.ts                      # Shared TypeScript interface definitions
-│   └── types/
-│       └── payment.ts                # PaymentRequest, GatewayType and IPaymentGateway types
-├── firebase-applet-config.json        # Compiled Firebase config keys (client credentials)
+│   └── types.ts                      # Shared TypeScript interface definitions
+├── api/
+│   └── index.ts                      # Vercel API entry point (exports app from server.ts)
+├── .env                              # Environment variables (GEMINI_API_KEY, AURA_OWNER_PASSCODE)
+├── firebase-applet-config.json       # Compiled Firebase config keys (client credentials)
 ├── firebase-blueprint.json           # Declarative Intermediate Representation (IR) of Collections
 ├── firestore.rules                   # Real-time Cloud Firestore security permission files
 ├── server.ts                         # Full-stack Express server handling API endpoints and Vite development middleware
 ├── package.json                      # NPM configuration, dependencies and build scripts
 ├── vite.config.ts                    # Vite build configuration with React plugin
 ├── tsconfig.json                     # TypeScript compiler configurations
-├── .env.example                      # Boilerplate environment variable documenter
-└── metadata.json                     # System framework permissions and capabilities manifest
+└── vercel.json                       # Vercel deployment configuration
 ```
 
 ---
@@ -110,10 +113,43 @@ To guarantee instant response, offline resilience, and reliable state tracking a
 
 ---
 
-## 4. Environment Variables Configuration
+## 4. Currency System
+The application supports three primary currencies for display:
+
+| Currency | Symbol | Exchange Rate (relative to USD) |
+|----------|--------|-------------------------------|
+| USD      | $      | 1.0                           |
+| EUR      | €      | 0.92                          |
+| GBP      | £      | 0.78                          |
+
+**Note:** INR is used for UPI payment conversion internally but is not a primary currency selection option for product display.
+
+---
+
+## 5. Environment Variables Configuration
 To guarantee robust operations in sandbox and production runtimes, the app utilizes server-side variables. These should never be hardcoded into source code:
 
-- **`GEMINI_API_KEY`:** Required for the server-side AI Concierge endpoint (`/api/chat`). Kept hidden from public inspect networks by operating exclusively in backend routing space.
+- **`GEMINI_API_KEY`:** Required for the server-side AI Concierge endpoint (`/api/gemini/chat`). Kept hidden from public inspect networks by operating exclusively in backend routing space.
+- **`AURA_OWNER_USERNAME`:** Owner portal username (defaults to `admin`).
+- **`AURA_OWNER_PASSCODE`:** Owner portal passcode (defaults to `admin123`).
 - **`NODE_ENV`:** Dictates server routing state (`"production"` vs `"development"`). Controls whether to run Vite-provided Hot Module Replacement middleware or static directory express asset distributions.
 - **`PORT`:** Embedded default set to `3000` to feed the Reverse Proxy pipeline.
 - **Firebase credentials:** Extracted client-side at runtime from `firebase-applet-config.json` generated dynamically during database provisioning. This protects local configurations and keeps keys decoupled from static source builds.
+
+---
+
+## 6. API Endpoints
+The backend server exposes the following endpoints:
+
+- **POST `/api/gemini/chat`** - AI chat assistant endpoint
+  - Request body: `{ message: string, history?: Array }`
+  - Response: `{ reply: string }`
+
+- **POST `/api/owner/verify-passcode`** - Owner authentication endpoint
+  - Request body: `{ username: string, passcode: string }`
+  - Response: `{ success: boolean, error?: string }`
+
+- **POST `/api/payment/process`** - Payment processing (via payment controller)
+  - Handles payment gateway integration for future expansion
+
+---

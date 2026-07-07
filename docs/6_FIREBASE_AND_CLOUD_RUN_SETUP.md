@@ -10,6 +10,7 @@ Aura & Co. runs inside a secure, scalable container on **Google Cloud Run**, orc
 * **Port 3000 Ingress Routing:** The Cloud Run container runs behind an Nginx reverse proxy layer that routes all external public traffic exclusively to **Port 3000**. All development and production servers must be configured to bind to host `0.0.0.0` on port `3000`.
 * **Full-Stack Bundle Resolution:** In production, the system compiles the Vite React assets into a static distribution directory (`dist/`), and bundles the Express TypeScript backend (`server.ts`) into a single CommonJS file (`dist/server.cjs`) using `esbuild`. This eliminates Node ESM import resolution failures in serverless environments.
 * **Serverless Entry Point:** In production, the app starts via the `"start"` script calling `node dist/server.cjs`, launching Express to serve both backend `/api/*` endpoints and serve compiled static SPA files.
+* **Vercel Deployment:** For Vercel deployments, the `api/index.ts` file exports the Express app, allowing Vercel's serverless functions to handle API routes.
 
 ---
 
@@ -64,12 +65,12 @@ To keep authentication secure and frictionless, Phone sign-in uses an advanced h
       │                                            ├─ 3. signInWithPhoneNumber ─────────>│
       │                                            │                                     ├─ 4. Generates SMS Code
       │                                            │                                     │
-      │<─ 5. Receives 6-Digit Code (SMS) ──────────┼─────────────────────────────────────┤
+      │<─ 5. Receives 6-Digit Code (SMS) ──────────┼─────────────────────────────────────│
       │                                            │                                     │
       ├─ 6. Inputs 6-digit Code (e.g. 123456) ────>│                                     │
       │                                            ├─ 7. confirmationResult.confirm() ──>│
       │                                            │                                     ├─ 8. Authorizes Profile
-      │<─ 9. Handshake Confirmed (Welcome!) ───────┼<────────────────────────────────────┤
+      │<─ 9. Handshake Confirmed (Welcome!) ───────┼<─────────────────────────────────────┤
 ```
 
 ### Recaptcha Invisible Verification
@@ -104,7 +105,7 @@ To develop or customize Aura & Co. locally, run the following guidelines:
 ### Dependency Installation
 We utilize the modular **Firebase Web SDK v10/v12** which allows tree-shaking and compiles small bundles. Install standard dependencies using NPM:
 ```bash
-npm install firebase
+npm install
 ```
 
 ### Running the Development Environment
@@ -120,3 +121,30 @@ Always check TypeScript type safety and compile capabilities before requesting p
 npm run lint   # Compiles with tsc --noEmit to verify deep type-safety
 npm run build  # Builds bundle packages and generates production server distributions
 ```
+
+---
+
+## 7. Environment Variables Required
+Create a `.env` file in the project root with the following variables:
+
+```env
+# Required for AI Concierge
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# Owner Portal Credentials (optional - defaults provided)
+AURA_OWNER_USERNAME=admin
+AURA_OWNER_PASSCODE=admin123
+```
+
+---
+
+## 8. API Endpoints Reference
+The backend server exposes the following endpoints for integration:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/gemini/chat` | POST | AI chat assistant - forwards queries to Gemini API |
+| `/api/owner/verify-passcode` | POST | Owner portal authentication |
+| `/api/payment/process` | POST | Payment gateway processing (extensible) |
+
+---
