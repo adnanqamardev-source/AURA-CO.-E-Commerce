@@ -16,6 +16,7 @@ import { auth, db, handleFirestoreError, OperationType } from "./utils/firebase"
 import { onAuthStateChanged, signOut, User as FirebaseUser } from "firebase/auth";
 import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import UserAuthModal from "./components/UserAuthModal";
+import PolicyModal from "./components/PolicyModal";
 
 export default function App() {
   // --- Editable Products Catalog with LocalStorage Persistence ---
@@ -77,6 +78,7 @@ export default function App() {
   const [isOrdersOpen, setIsOrdersOpen] = useState(false);
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [isOwnerOpen, setIsOwnerOpen] = useState(false);
+  const [policyModal, setPolicyModal] = useState<"terms" | "privacy" | null>(null);
   const [isOwnerLoggedIn, setIsOwnerLoggedIn] = useState<boolean>(() => {
     try {
       return localStorage.getItem("aura_owner_logged_in") === "true";
@@ -671,10 +673,33 @@ export default function App() {
         onDeleteOrder={handleDeleteOrder}
       />
 
+      {/* Policy Modal Overlay */}
+      <PolicyModal
+        type={policyModal}
+        onClose={() => setPolicyModal(null)}
+      />
+
       {/* Footer */}
-      <footer className="bg-white border-t border-[#e2e8f0] py-8 text-center text-xs text-gray-400 font-mono tracking-widest mt-auto">
-        <p>© 2026 AURA & CO. ALL RIGHTS RESERVED.</p>
-        <p className="text-[10px] text-gray-300 mt-1">CRAFTED FOR PEAK MINIMALIST LIFESTYLE REFINEMENT</p>
+      <footer className="bg-white border-t border-[#e2e8f0] py-10 text-center text-xs text-gray-400 font-mono tracking-widest mt-auto">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col items-center gap-3">
+          <p className="text-gray-500 font-medium font-sans tracking-tight">© 2026 AURA & CO. ALL RIGHTS RESERVED.</p>
+          <div className="flex flex-wrap items-center justify-center gap-6 text-[10px] uppercase font-mono tracking-wider text-gray-400">
+            <button
+              onClick={() => setPolicyModal("terms")}
+              className="hover:text-black transition-colors cursor-pointer"
+            >
+              Terms & Conditions
+            </button>
+            <span className="text-gray-250 select-none">|</span>
+            <button
+              onClick={() => setPolicyModal("privacy")}
+              className="hover:text-black transition-colors cursor-pointer"
+            >
+              Privacy Policy
+            </button>
+          </div>
+          <p className="text-[9px] text-gray-300 mt-1 uppercase">CRAFTED FOR PEAK MINIMALIST LIFESTYLE REFINEMENT</p>
+        </div>
       </footer>
 
     </div>

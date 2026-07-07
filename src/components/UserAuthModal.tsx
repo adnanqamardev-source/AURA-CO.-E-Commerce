@@ -298,77 +298,78 @@ export default function UserAuthModal({ isOpen, onClose }: UserAuthModalProps) {
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative bg-[#faf9f6] w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border border-[#e2e8f0] flex flex-col max-h-[90vh]"
+          className="relative bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border border-gray-100 flex flex-col max-h-[95vh]"
         >
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 z-10 p-2 bg-white hover:bg-black hover:text-white rounded-full transition-all border border-[#e2e8f0]"
+            className="absolute top-5 right-5 z-10 p-2 text-gray-400 hover:text-black hover:bg-gray-50 rounded-full transition-all border border-gray-100 cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
 
           {/* Title & Brand logo */}
-          <div className="p-6 pb-4 border-b border-[#e2e8f0] bg-white text-center">
-            <div className="inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100 mb-2">
-              <Sparkles className="h-3 w-3" />
-              <span>Durable Cloud Vault • Option B</span>
-            </div>
-            <h2 className="font-display font-bold text-xl text-gray-900">
-              Aura Customer Portal
+          <div className="p-8 pb-5 text-center bg-white">
+            <h2 className="font-sans font-medium tracking-tight text-2xl text-gray-900">
+              Welcome to Aura
             </h2>
-            <p className="text-gray-400 text-xs mt-1 leading-relaxed">
-              Sign in to secure order history and synchronize shopping carts across devices.
+            <p className="text-gray-500 text-xs mt-1.5 leading-relaxed max-w-xs mx-auto">
+              Access your personal boutique wardrobe, track orders, and synchronize your curated shopping collections.
             </p>
           </div>
 
-          {/* Custom Tabs Navigation */}
-          <div className="grid grid-cols-3 border-b border-[#e2e8f0] bg-white text-center">
-            <button
-              onClick={() => {
-                setActiveTab("signin");
-                setErrorMsg(null);
-              }}
-              className={`py-3.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wider border-b-2 transition-all ${
-                activeTab === "signin"
-                  ? "border-black text-black bg-[#faf9f6]"
-                  : "border-transparent text-gray-400 hover:text-gray-600 bg-white"
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab("signup");
-                setErrorMsg(null);
-              }}
-              className={`py-3.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wider border-b-2 transition-all ${
-                activeTab === "signup"
-                  ? "border-black text-black bg-[#faf9f6]"
-                  : "border-transparent text-gray-400 hover:text-gray-600 bg-white"
-              }`}
-            >
-              Register
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab("phone");
-                setErrorMsg(null);
-              }}
-              className={`py-3.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wider border-b-2 transition-all ${
-                activeTab === "phone"
-                  ? "border-black text-black bg-[#faf9f6]"
-                  : "border-transparent text-gray-400 hover:text-gray-600 bg-white"
-              }`}
-            >
-              SMS Access
-            </button>
+          {/* Custom Tabs Segmented Control */}
+          <div className="px-8 pb-3">
+            <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("signin");
+                  setErrorMsg(null);
+                }}
+                className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+                  activeTab === "signin"
+                    ? "bg-white text-gray-950 shadow-sm border border-gray-100 font-semibold"
+                    : "text-gray-400 hover:text-gray-700"
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("signup");
+                  setErrorMsg(null);
+                }}
+                className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+                  activeTab === "signup"
+                    ? "bg-white text-gray-950 shadow-sm border border-gray-100 font-semibold"
+                    : "text-gray-400 hover:text-gray-700"
+                }`}
+              >
+                Register
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("phone");
+                  setErrorMsg(null);
+                }}
+                className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+                  activeTab === "phone"
+                    ? "bg-white text-gray-950 shadow-sm border border-gray-100 font-semibold"
+                    : "text-gray-400 hover:text-gray-700"
+                }`}
+              >
+                SMS Code
+              </button>
+            </div>
           </div>
 
-          <div className="p-6 overflow-y-auto space-y-4">
+          <div className="p-8 pt-2 overflow-y-auto space-y-4">
             {errorMsg && (
-              <div className="bg-red-50 border border-red-100 p-3 rounded-xl text-xs text-red-700 leading-relaxed font-medium">
-                ⚠️ {errorMsg}
+              <div className="bg-rose-50 border border-rose-100 p-3 rounded-xl text-xs text-rose-700 leading-relaxed font-medium">
+                {errorMsg}
               </div>
             )}
 
@@ -382,55 +383,53 @@ export default function UserAuthModal({ isOpen, onClose }: UserAuthModalProps) {
             {activeTab === "phone" ? (
               <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp} className="space-y-4">
                 {!otpSent ? (
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Phone Number (E.164 format)
-                    </label>
-                    <p className="text-[10px] text-gray-400 mb-2 leading-relaxed font-sans">
-                      Enter complete number with country code prefix (e.g. +15551234567)
-                    </p>
-                    <div className="relative">
-                      <Phone className="absolute left-3.5 top-3 h-4 w-4 text-gray-400" />
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                        Phone Number (E.164 format)
+                      </label>
                       <input
                         type="tel"
                         value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value)}
                         placeholder="+15551234567"
-                        className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-[#e2e8f0] rounded-xl focus:outline-none focus:border-black font-mono"
+                        className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all font-mono"
                         disabled={loading}
                       />
+                      <p className="text-[10px] text-gray-400 mt-1.5 leading-normal">
+                        Include country code prefix (e.g. +1 for US, +91 for India).
+                      </p>
                     </div>
                     
                     <button
                       type="submit"
-                      className="w-full mt-4 py-2.5 bg-black hover:bg-neutral-800 text-white rounded-xl text-xs font-semibold tracking-wider uppercase transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:bg-gray-400"
+                      className="w-full py-3 bg-black hover:bg-gray-900 text-white rounded-xl text-xs font-medium tracking-wide transition-all flex items-center justify-center gap-2 cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm"
                       disabled={loading}
                     >
-                      {loading ? "Sending SMS Code..." : "Send Verification SMS"}
+                      {loading ? "Sending..." : "Send Verification Code"}
                     </button>
                   </div>
                 ) : (
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      6-Digit Verification Code
-                    </label>
-                    <p className="text-[10px] text-gray-400 mb-2 leading-relaxed font-sans">
-                      Enter the code received on your device for {phoneNumber}
-                    </p>
-                    <div className="relative">
-                      <Key className="absolute left-3.5 top-3 h-4 w-4 text-gray-400" />
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                        6-Digit Verification Code
+                      </label>
                       <input
                         type="text"
                         value={verificationCode}
                         onChange={(e) => setVerificationCode(e.target.value)}
                         placeholder="123456"
                         maxLength={6}
-                        className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-[#e2e8f0] rounded-xl focus:outline-none focus:border-black text-center tracking-[0.5em] font-mono text-lg font-bold"
+                        className="w-full px-4 py-3 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black text-center tracking-[0.5em] font-mono text-lg font-semibold"
                         disabled={loading}
                       />
+                      <p className="text-[10px] text-gray-400 mt-1.5 leading-normal">
+                        Enter the verification code sent to {phoneNumber}
+                      </p>
                     </div>
 
-                    <div className="flex gap-2.5 mt-4">
+                    <div className="flex gap-2.5 pt-1">
                       <button
                         type="button"
                         onClick={() => {
@@ -439,7 +438,7 @@ export default function UserAuthModal({ isOpen, onClose }: UserAuthModalProps) {
                           setVerificationCode("");
                           setErrorMsg(null);
                         }}
-                        className="w-1/3 py-2.5 border border-[#e2e8f0] hover:bg-gray-50 text-gray-600 rounded-xl text-xs font-semibold tracking-wider uppercase transition-all flex items-center justify-center cursor-pointer"
+                        className="w-1/3 py-3 border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-xl text-xs font-medium transition-all flex items-center justify-center cursor-pointer"
                         disabled={loading}
                       >
                         Change
@@ -447,7 +446,7 @@ export default function UserAuthModal({ isOpen, onClose }: UserAuthModalProps) {
                       
                       <button
                         type="submit"
-                        className="w-2/3 py-2.5 bg-black hover:bg-neutral-800 text-white rounded-xl text-xs font-semibold tracking-wider uppercase transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:bg-gray-400"
+                        className="w-2/3 py-3 bg-black hover:bg-gray-900 text-white rounded-xl text-xs font-medium tracking-wide transition-all flex items-center justify-center gap-2 cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm"
                         disabled={loading}
                       >
                         {loading ? "Verifying..." : "Confirm Code"}
@@ -460,87 +459,83 @@ export default function UserAuthModal({ isOpen, onClose }: UserAuthModalProps) {
               <form onSubmit={activeTab === "signin" ? handleSignIn : handleSignUp} className="space-y-4">
                 {activeTab === "signup" && (
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Your Full Name</label>
-                    <div className="relative">
-                      <UserIcon className="absolute left-3.5 top-3 h-4 w-4 text-gray-400" />
-                      <input
-                        type="text"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Jane Doe"
-                        className="w-full pl-10 pr-4 py-2 text-sm bg-white border border-[#e2e8f0] rounded-xl focus:outline-none focus:border-black"
-                        disabled={loading}
-                      />
-                    </div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1.5">Full Name</label>
+                    <input
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Jane Doe"
+                      className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all"
+                      disabled={loading}
+                    />
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Email Address</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3.5 top-3 h-4 w-4 text-gray-400" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="jane.doe@example.com"
-                      className="w-full pl-10 pr-4 py-2 text-sm bg-white border border-[#e2e8f0] rounded-xl focus:outline-none focus:border-black"
-                      disabled={loading}
-                    />
-                  </div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Email Address</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="jane.doe@example.com"
+                    className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all"
+                    disabled={loading}
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3.5 top-3 h-4 w-4 text-gray-400" />
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full pl-10 pr-4 py-2 text-sm bg-white border border-[#e2e8f0] rounded-xl focus:outline-none focus:border-black"
-                      disabled={loading}
-                    />
-                  </div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Password</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all"
+                    disabled={loading}
+                  />
                   {activeTab === "signup" && (
-                    <p className="text-[10px] text-gray-400 mt-1 font-mono">
-                      Must be at least 6 characters long
+                    <p className="text-[10px] text-gray-400 mt-1.5">
+                      Must be at least 6 characters long.
                     </p>
                   )}
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-2.5 bg-black hover:bg-neutral-800 text-white rounded-xl text-xs font-semibold tracking-wider uppercase transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:bg-gray-400"
+                  className="w-full py-3 bg-black hover:bg-gray-900 text-white rounded-xl text-xs font-medium tracking-wide transition-all flex items-center justify-center gap-2 cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm mt-2"
                   disabled={loading}
                 >
-                  {loading ? "Processing Secure Handshake..." : activeTab === "signin" ? "Sign In to Vault" : "Create Vault Profile"}
+                  {loading ? "Please wait..." : activeTab === "signin" ? "Sign In" : "Register Account"}
                 </button>
               </form>
             )}
 
-            <div className="relative flex py-2 items-center">
-              <div className="flex-grow border-t border-gray-200"></div>
-              <span className="flex-shrink mx-4 text-[10px] font-mono text-gray-400 uppercase tracking-widest">or</span>
-              <div className="flex-grow border-t border-gray-200"></div>
+            <div className="relative flex py-2.5 items-center">
+              <div className="flex-grow border-t border-gray-100"></div>
+              <span className="flex-shrink mx-4 text-[10px] font-mono text-gray-300 uppercase tracking-widest">or</span>
+              <div className="flex-grow border-t border-gray-100"></div>
             </div>
 
             <button
               onClick={handleGoogleSignIn}
-              className="w-full py-2.5 bg-white hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-semibold tracking-wide border border-gray-200 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm mb-2"
+              className="w-full py-2.5 bg-white hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-semibold border border-gray-200 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm mb-2.5"
               disabled={loading}
             >
-              <span className="w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center font-bold text-[10px] font-sans">G</span>
+              <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
+                <path
+                  fill="#EA4335"
+                  d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114A5.514 5.514 0 0 1 8.5 13a5.514 5.514 0 0 1 5.491-5.514c1.4 0 2.627.527 3.564 1.386l3.127-3.127C18.82 3.964 16.482 3 14 3a10 10 0 0 0-10 10 10 10 0 0 0 10 10c5.345 0 9.764-3.864 9.764-10a11.134 11.134 0 0 0-.164-1.927l-11.36-.002z"
+                />
+              </svg>
               <span>Sign in with Google Account</span>
             </button>
 
             <button
               onClick={handleQuickDemo}
-              className="w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-semibold tracking-wide border border-indigo-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full py-2.5 bg-neutral-50 hover:bg-neutral-100 text-neutral-800 rounded-xl text-xs font-semibold border border-neutral-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               disabled={loading}
             >
-              <Sparkles className="h-4 w-4 text-indigo-500" />
+              <Sparkles className="h-4 w-4 text-amber-500" />
               <span>Instant Login with Demo Patron Account</span>
             </button>
           </div>
