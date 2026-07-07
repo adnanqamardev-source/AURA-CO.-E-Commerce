@@ -211,6 +211,95 @@ export default function CartSidebar({
     }
   };
 
+  const startRazorpayPayment = async () => {
+    const rate = currency === "USD" ? 83.5 : currency === "EUR" ? 90.0 : currency === "GBP" ? 106.0 : 1;
+    const inrAmount = Math.round(total * rate);
+    const receipt = `AURA-${Date.now()}`;
+
+    try {
+      const res = await fetch("/api/payment/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amountInr: inrAmount, currency: "INR", receipt }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCardError(data.error || "Could not initiate Razorpay order.");
+        return;
+      }
+
+      const options = {
+        key: data.keyId,
+        amount: data.amount,
+        currency: data.currency,
+        name: "Aura & Co.",
+        description: "Curated Lifestyle Boutique",
+        order_id: data.orderId,
+        handler: async function (response: any) {
+          // Verify signature server-side
+          const verifyRes = await fetch("/api/payment/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            }),
+          });
+          const verifyData = await verifyRes.json();
+          if (verifyData.success) {
+            onPlaceOrder(shipping, discount);
+            resetCheckoutWizard();
+          } else {
+            setCardError("Payment verification failed. Please try again.");
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setCardError("Payment cancelled. You can try again.");
+          },
+        },
+        prefill: {
+          name: shipping.fullName,
+          email: shipping.email,
+          contact: "",
+        },
+        theme: { color: "#1a1a1a" },
+      };
+
+      // Load Razorpay checkout script dynamically
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => {
+        const rzp = new (window as any).Razorpay(options);
+        rzp.open();
+      };
+      script.onerror = () => setCardError("Failed to load Razorpay Checkout.");
+      document.body.appendChild(script);
+    } catch (err: any) {
+      setCardError(err.message || "Payment initiation failed.");
+    }
+  };
+
+  const resetCheckoutWizard = () => {
+    setCheckoutStep("cart");
+    setPromoDiscount(0);
+    setCouponCode("");
+    setCouponSuccess("");
+    setPaymentMethod("razorpay");
+    setRazorpayMethod("card");
+    setSelectedBank("");
+    setGpayUpi("");
+    setPhonepeUpi("");
+    setUpiRefNo("");
+    setCardHolder("");
+    setCardNumber("");
+    setCardExpiry("");
+    setCardCvc("");
+    setCardError("");
+    onClose();
+  };
+
   const startPaying = () => {
     if (!currentUser) {
       onOpenAuth?.();
@@ -218,78 +307,21 @@ export default function CartSidebar({
     }
 
     if (paymentMethod === "razorpay") {
+      // Real Razorpay Checkout handles card + netbanking natively.
       if (razorpayMethod === "card") {
         if (cardHolder.trim().length < 3) {
           setCardError("Please enter a valid cardholder name (at least 3 characters).");
           return;
         }
-        const rawNum = cardNumber.replace(/\s/g, "");
-        if (!/^\d+$/.test(rawNum)) {
-          setCardError("Card number must contain only numeric digits.");
-          return;
-        }
-        if (rawNum.length !== 16) {
-          setCardError("Card number must be exactly 16 digits.");
-          return;
-        }
-
-        // Luhn algorithm verification
-        const checkLuhn = (num: string): boolean => {
-          let sum = 0;
-          let shouldDouble = false;
-          for (let i = num.length - 1; i >= 0; i--) {
-            let digit = parseInt(num.charAt(i), 10);
-            if (shouldDouble) {
-              digit *= 2;
-              if (digit > 9) digit -= 9;
-            }
-            sum += digit;
-            shouldDouble = !shouldDouble;
-          }
-          return sum % 10 === 0;
-        };
-
-        if (!checkLuhn(rawNum)) {
-          setCardError("Invalid card number. Failed Luhn checksum validation (use Razorpay test card: 4111 1111 1111 1111).");
-          return;
-        }
-
-        if (!/^\d{2}\/\d{2}$/.test(cardExpiry)) {
-          setCardError("Expiry must be in MM/YY format.");
-          return;
-        }
-        const [month, yearShort] = cardExpiry.split("/").map(Number);
-        if (month < 1 || month > 12) {
-          setCardError("Expiry month must be between 01 and 12.");
-          return;
-        }
-
-        const expiryYear = 2000 + yearShort;
-        const today = new Date();
-        const currentYear = today.getFullYear();
-        const currentMonth = today.getMonth() + 1; // 1-12
-
-        if (expiryYear < currentYear || (expiryYear === currentYear && month < currentMonth)) {
-          setCardError("The credit card has expired.");
-          return;
-        }
-
-        if (!/^\d+$/.test(cardCvc)) {
-          setCardError("CVC must contain only numeric digits.");
-          return;
-        }
-        if (cardCvc.length < 3 || cardCvc.length > 4) {
-          setCardError("CVC must be 3 or 4 digits.");
-          return;
-        }
-        setCardError("");
       } else if (razorpayMethod === "netbanking") {
         if (!selectedBank) {
           setCardError("Please select a bank for netbanking.");
           return;
         }
-        setCardError("");
       }
+      setCardError("");
+      startRazorpayPayment();
+      return;
     } else if (paymentMethod === "gpay") {
       const gpayVal = gpayUpi.trim();
       if (!gpayVal) {
