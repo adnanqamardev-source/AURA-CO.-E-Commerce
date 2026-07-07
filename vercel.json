@@ -2,10 +2,6 @@
   "version": 2,
   "rewrites": [
     {
-      "source": "/api/owner/verify-passcode",
-      "destination": "/api/verify-passcode"
-    },
-    {
       "source": "/api/(.*)",
       "destination": "/api"
     },

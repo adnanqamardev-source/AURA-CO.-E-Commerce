@@ -166,12 +166,6 @@ export default function OwnerPanelModal({
         setPasswordInput("");
         setLoginError("");
         triggerSuccess("Authorized successfully as Store Owner.");
-      } else if (response.status === 500) {
-        // Server-side failure — surface a more actionable message
-        setLoginError(
-          data.error ||
-            "The authentication server encountered an internal error. Please redeploy or contact support."
-        );
       } else {
         setLoginError(data.error || "Invalid credentials. Please verify your passcode.");
       }

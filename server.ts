@@ -2,8 +2,6 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
-import Razorpay from "razorpay";
-import crypto from "crypto";
 import dotenv from "dotenv";
 
 // Load environment variables
@@ -123,79 +121,6 @@ app.post("/api/owner/verify-passcode", (req, res) => {
   } catch (error: any) {
     console.error("Owner Auth Error:", error);
     return res.status(500).json({ success: false, error: "An internal server error occurred." });
-  }
-});
-
-// --- Razorpay Integration ---
-// Live/test keys provided via env. Falls back to test keys when unset.
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || "rzp_test_TAVhTBbGLmSCdH";
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "33tvlmPudUcueWNiyzchBaI2";
-
-let razorpayClient: Razorpay | null = null;
-function getRazorpayClient(): Razorpay {
-  if (!razorpayClient) {
-    razorpayClient = new Razorpay({
-      key_id: RAZORPAY_KEY_ID,
-      key_secret: RAZORPAY_KEY_SECRET,
-    });
-  }
-  return razorpayClient;
-}
-
-// Create a Razorpay order. Amount is received in INR (smallest unit: paise).
-app.post("/api/payment/create-order", async (req, res) => {
-  try {
-    const { amountInr, currency = "INR", receipt } = req.body;
-    if (typeof amountInr !== "number" || amountInr <= 0) {
-      return res.status(400).json({ error: "Valid amountInr (positive number) is required." });
-    }
-    if (typeof receipt !== "string" || receipt.length > 128) {
-      return res.status(400).json({ error: "Valid receipt string is required." });
-    }
-
-    const order: any = await getRazorpayClient().orders.create({
-      amount: Math.round(amountInr * 100), // INR -> paise
-      currency,
-      receipt,
-      payment_capture: 1 as any,
-    });
-
-    return res.json({
-      orderId: order.id,
-      amount: order.amount,
-      currency: order.currency,
-      keyId: RAZORPAY_KEY_ID,
-    });
-  } catch (error: any) {
-    console.error("Razorpay create-order error:", error.message || error);
-    return res.status(500).json({ error: "Failed to create payment order. " + (error.message || "") });
-  }
-});
-
-// Verify Razorpay payment signature (server-side integrity check)
-app.post("/api/payment/verify", (req, res) => {
-  try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
-    if (
-      typeof razorpay_order_id !== "string" ||
-      typeof razorpay_payment_id !== "string" ||
-      typeof razorpay_signature !== "string"
-    ) {
-      return res.status(400).json({ success: false, error: "Missing payment verification parameters." });
-    }
-
-    const generatedSignature = crypto
-      .createHmac("sha256", RAZORPAY_KEY_SECRET)
-      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-      .digest("hex");
-
-    if (generatedSignature === razorpay_signature) {
-      return res.json({ success: true });
-    }
-    return res.status(400).json({ success: false, error: "Invalid payment signature." });
-  } catch (error: any) {
-    console.error("Razorpay verify error:", error);
-    return res.status(500).json({ success: false, error: "Payment verification failed." });
   }
 });
 

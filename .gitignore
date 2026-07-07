@@ -7,4 +7,3 @@ coverage/
 .env*
 !.env.example
 .vercel/
-cline_mcp_settings.json
