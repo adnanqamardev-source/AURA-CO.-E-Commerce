@@ -66,6 +66,7 @@ export default function CartSidebar({
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "gpay" | "phonepe">("razorpay");
   const [razorpayMethod, setRazorpayMethod] = useState<"card" | "netbanking">("card");
+  const [razorpayGatewayMode, setRazorpayGatewayMode] = useState<"sandbox" | "live">("sandbox");
   const [selectedBank, setSelectedBank] = useState<string>("");
   const [gpayUpi, setGpayUpi] = useState<string>("");
   const [phonepeUpi, setPhonepeUpi] = useState<string>("");
@@ -105,7 +106,7 @@ export default function CartSidebar({
     }
 
     // If we are paying with the real Razorpay checkout, we control steps manually in the callback
-    if (paymentMethod === "razorpay") {
+    if (paymentMethod === "razorpay" && razorpayGatewayMode === "live") {
       return;
     }
 
@@ -223,6 +224,35 @@ export default function CartSidebar({
     }
 
     if (paymentMethod === "razorpay") {
+      if (razorpayGatewayMode === "sandbox") {
+        if (razorpayMethod === "card") {
+          if (!cardHolder.trim()) {
+            setCardError("Cardholder Name is required.");
+            return;
+          }
+          if (cardNumber.replace(/\s+/g, "").length < 12) {
+            setCardError("Please enter a valid card number.");
+            return;
+          }
+          if (cardExpiry.length !== 5) {
+            setCardError("Please enter a valid expiration date (MM/YY).");
+            return;
+          }
+          if (cardCvc.length < 3) {
+            setCardError("Please enter a valid 3 or 4 digit CVV/CVC.");
+            return;
+          }
+        } else {
+          if (!selectedBank) {
+            setCardError("Please select a bank for netbanking.");
+            return;
+          }
+        }
+        setCardError("");
+        setCheckoutStep("paying");
+        return;
+      }
+
       setCardError("Initializing Razorpay Secure Checkout...");
       
       try {
@@ -745,6 +775,54 @@ export default function CartSidebar({
                             </p>
                           </div>
                         </div>
+
+                        {/* Gateway Mode Switch */}
+                        <div className="px-4 pt-3 pb-2 border-b border-gray-100 flex items-center justify-between bg-neutral-50/50">
+                          <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider">
+                            GATEWAY INTERFACE:
+                          </span>
+                          <div className="flex bg-neutral-200/80 p-0.5 rounded-lg border border-neutral-300">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRazorpayGatewayMode("sandbox");
+                                setCardError("");
+                              }}
+                              className={`px-2.5 py-1 rounded-md text-[9px] font-mono font-bold uppercase transition-all cursor-pointer ${
+                                razorpayGatewayMode === "sandbox"
+                                  ? "bg-white text-emerald-800 shadow-xs"
+                                  : "text-neutral-500 hover:text-neutral-900"
+                              }`}
+                            >
+                              Sandbox (Simulated)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRazorpayGatewayMode("live");
+                                setCardError("");
+                              }}
+                              className={`px-2.5 py-1 rounded-md text-[9px] font-mono font-bold uppercase transition-all cursor-pointer ${
+                                razorpayGatewayMode === "live"
+                                  ? "bg-white text-indigo-900 shadow-xs"
+                                  : "text-neutral-500 hover:text-neutral-900"
+                              }`}
+                            >
+                              Live Gateway
+                            </button>
+                          </div>
+                        </div>
+
+                        {razorpayGatewayMode === "sandbox" && (
+                          <div className="mx-4 mt-3 p-2 bg-emerald-50/70 border border-emerald-100 rounded-lg text-[10px] text-emerald-800 leading-normal font-medium">
+                            🌿 <strong>Seamless Sandbox Active:</strong> Fully tests database synchronization and webhook ledgers with any card, bypassing international or currency-level gateway restrictions.
+                          </div>
+                        )}
+                        {razorpayGatewayMode === "live" && (
+                          <div className="mx-4 mt-3 p-2 bg-amber-50/70 border border-amber-100 rounded-lg text-[10px] text-amber-800 leading-normal font-medium">
+                            ⚠️ <strong>Live Gateway Active:</strong> Invokes real Razorpay scripts. Note: Standard Razorpay test keys from India do not support international cards (e.g. Visa/Mastercard USA test cards) or foreign currencies by default unless international transactions are activated on your dashboard.
+                          </div>
+                        )}
 
                         {/* Razorpay Inner Tabs */}
                         <div className="p-4 space-y-4">

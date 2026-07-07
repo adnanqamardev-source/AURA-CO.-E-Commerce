@@ -16,6 +16,13 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isStoreOwner() {
+      return isSignedIn() && (
+        request.auth.uid == "IDAyReIxa3Wqq0hPts3rIwzc3kw1" ||
+        (request.auth.token != null && request.auth.token.email == "legendaryace590@gmail.com")
+      );
+    }
+
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
@@ -46,17 +53,17 @@ service cloud.firestore {
 
     // 1. Carts Collection (Pillar 6 / Identity Integrity)
     match /carts/{userId} {
-      allow get: if isOwner(userId);
-      allow write: if isOwner(userId) && isValidCart(incoming());
+      allow get: if isOwner(userId) || isStoreOwner();
+      allow write: if (isOwner(userId) || isStoreOwner()) && isValidCart(incoming());
     }
 
     // 2. Orders Collection (Pillar 8 / Secure Query Enforcer)
     match /orders/{orderId} {
-      allow create: if isSignedIn() && isValidOrder(incoming()) && incoming().userId == request.auth.uid;
-      allow get: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow update: if isSignedIn() && resource.data.userId == request.auth.uid && isValidOrder(incoming());
-      allow delete: if false; // Orders cannot be deleted
+      allow create: if isSignedIn() && isValidOrder(incoming()) && (incoming().userId == request.auth.uid || isStoreOwner());
+      allow get: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid || isStoreOwner());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isStoreOwner());
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isStoreOwner()) && isValidOrder(incoming());
+      allow delete: if isStoreOwner(); // Store owners can delete/purge orders if needed
     }
 
     // 3. Products Collection (Pillar 8)

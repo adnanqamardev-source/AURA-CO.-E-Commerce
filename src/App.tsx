@@ -12,7 +12,7 @@ import OwnerPanelModal, { UpiSettings } from "./components/OwnerPanelModal";
 import { CurrencyCode } from "./utils/currency";
 
 // Firebase Imports
-import { auth, db, handleFirestoreError, OperationType } from "./utils/firebase";
+import { auth, db, handleFirestoreError, OperationType, sanitizeFirestoreData } from "./utils/firebase";
 import { onAuthStateChanged, signOut, User as FirebaseUser } from "firebase/auth";
 import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import UserAuthModal from "./components/UserAuthModal";
@@ -103,13 +103,13 @@ export default function App() {
       if (currentUser) {
         const path = `carts/${currentUser.uid}`;
         try {
-          // Deep clean any undefined properties by serializing/deserializing
-          const cleanCartItems = JSON.parse(JSON.stringify(cartItems));
-          await setDoc(doc(db, "carts", currentUser.uid), {
+          // Deep clean any undefined or invalid properties recursively
+          const cleanPayload = sanitizeFirestoreData({
             userId: currentUser.uid,
-            items: cleanCartItems,
+            items: cartItems,
             updatedAt: new Date().toISOString()
           });
+          await setDoc(doc(db, "carts", currentUser.uid), cleanPayload);
         } catch (err) {
           console.error("Error syncing cart to Firestore:", err);
           handleFirestoreError(err, OperationType.WRITE, path);
@@ -185,7 +185,7 @@ export default function App() {
       );
       
       // Save to Firestore
-      const cleanMergedOrder = JSON.parse(JSON.stringify(mergedOrder));
+      const cleanMergedOrder = sanitizeFirestoreData(mergedOrder);
       await setDoc(doc(db, "orders", orderId), cleanMergedOrder);
       showToast(`Order ${orderId} successfully updated to status: ${updatedFields.status || "Updated"}`);
     } catch (err) {
@@ -228,12 +228,12 @@ export default function App() {
             const localCart = localStorage.getItem("aura_cart");
             const items = localCart ? JSON.parse(localCart) : [];
             if (items.length > 0) {
-              const cleanItems = JSON.parse(JSON.stringify(items));
-              await setDoc(doc(db, "carts", user.uid), {
+              const cleanPayload = sanitizeFirestoreData({
                 userId: user.uid,
-                items: cleanItems,
+                items,
                 updatedAt: new Date().toISOString()
               });
+              await setDoc(doc(db, "carts", user.uid), cleanPayload);
             }
           }
         } catch (err) {
@@ -384,10 +384,10 @@ export default function App() {
     setIsCartOpen(false);
 
     try {
-      const cleanOrder = JSON.parse(JSON.stringify({
+      const cleanOrder = sanitizeFirestoreData({
         ...newOrder,
         userId: currentUser ? currentUser.uid : "guest"
-      }));
+      });
       await setDoc(doc(db, "orders", orderId), cleanOrder);
     } catch (err) {
       console.error("Error saving order to Firestore:", err);
