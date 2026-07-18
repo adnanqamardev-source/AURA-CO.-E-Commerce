@@ -12,10 +12,11 @@ import OwnerPanelModal, { UpiSettings } from "./components/OwnerPanelModal";
 import { CurrencyCode } from "./utils/currency";
 
 // Firebase Imports
-import { auth, db, handleFirestoreError, OperationType } from "./utils/firebase";
+import { auth, db, handleFirestoreError, OperationType, sanitizeFirestoreData } from "./utils/firebase";
 import { onAuthStateChanged, signOut, User as FirebaseUser } from "firebase/auth";
 import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import UserAuthModal from "./components/UserAuthModal";
+import PolicyModal from "./components/PolicyModal";
 
 export default function App() {
   // --- Editable Products Catalog with LocalStorage Persistence ---
@@ -60,6 +61,9 @@ export default function App() {
     }
   });
 
+  // --- Owner level order list ---
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
+
   // --- Firebase Customer Auth States ---
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -74,6 +78,7 @@ export default function App() {
   const [isOrdersOpen, setIsOrdersOpen] = useState(false);
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [isOwnerOpen, setIsOwnerOpen] = useState(false);
+  const [policyModal, setPolicyModal] = useState<"terms" | "privacy" | null>(null);
   const [isOwnerLoggedIn, setIsOwnerLoggedIn] = useState<boolean>(() => {
     try {
       return localStorage.getItem("aura_owner_logged_in") === "true";
@@ -98,11 +103,13 @@ export default function App() {
       if (currentUser) {
         const path = `carts/${currentUser.uid}`;
         try {
-          await setDoc(doc(db, "carts", currentUser.uid), {
+          // Deep clean any undefined or invalid properties recursively
+          const cleanPayload = sanitizeFirestoreData({
             userId: currentUser.uid,
             items: cartItems,
             updatedAt: new Date().toISOString()
           });
+          await setDoc(doc(db, "carts", currentUser.uid), cleanPayload);
         } catch (err) {
           console.error("Error syncing cart to Firestore:", err);
           handleFirestoreError(err, OperationType.WRITE, path);
@@ -126,6 +133,82 @@ export default function App() {
     localStorage.setItem("aura_owner_logged_in", String(isOwnerLoggedIn));
   }, [isOwnerLoggedIn]);
 
+  // --- Owner Panel helper handlers ---
+  const fetchAllOrders = async () => {
+    try {
+      const q = collection(db, "orders");
+      const querySnapshot = await getDocs(q);
+      const ordersList: Order[] = [];
+      querySnapshot.forEach((doc) => {
+        ordersList.push(doc.data() as Order);
+      });
+      ordersList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      // Fallback if empty to use existing orders state
+      if (ordersList.length === 0 && orders.length > 0) {
+        setAllOrders(orders);
+      } else {
+        setAllOrders(ordersList);
+      }
+    } catch (err) {
+      console.error("Error fetching all orders for owner panel:", err);
+      // Fallback: use user's local orders merged with current orders list
+      setAllOrders(orders);
+    }
+  };
+
+  useEffect(() => {
+    if (isOwnerLoggedIn && isOwnerOpen) {
+      fetchAllOrders();
+    }
+  }, [isOwnerLoggedIn, isOwnerOpen]);
+
+  const handleUpdateOrder = async (orderId: string, updatedFields: Partial<Order>) => {
+    try {
+      // Find original order
+      const existingOrder = allOrders.find(o => o.id === orderId) || orders.find(o => o.id === orderId);
+      if (!existingOrder) return;
+
+      const mergedOrder = { ...existingOrder, ...updatedFields };
+
+      // Update in local states
+      setAllOrders((prev) => {
+        const found = prev.some(o => o.id === orderId);
+        if (found) {
+          return prev.map((o) => (o.id === orderId ? mergedOrder : o));
+        } else {
+          return [mergedOrder, ...prev];
+        }
+      });
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? mergedOrder : o))
+      );
+      
+      // Save to Firestore
+      const cleanMergedOrder = sanitizeFirestoreData(mergedOrder);
+      await setDoc(doc(db, "orders", orderId), cleanMergedOrder);
+      showToast(`Order ${orderId} successfully updated to status: ${updatedFields.status || "Updated"}`);
+    } catch (err) {
+      console.error("Error updating order in Firestore:", err);
+      showToast("Order status updated locally, but failed to sync to cloud database.");
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    try {
+      setAllOrders((prev) => prev.filter((o) => o.id !== orderId));
+      setOrders((prev) => prev.filter((o) => o.id !== orderId));
+      
+      // Delete from Firestore
+      const { deleteDoc } = await import("firebase/firestore");
+      await deleteDoc(doc(db, "orders", orderId));
+      showToast(`Order ${orderId} has been purged.`);
+    } catch (err) {
+      console.error("Error deleting order from Firestore:", err);
+      showToast("Order deleted locally.");
+    }
+  };
+
   // Listen to Firebase Auth State Changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -145,11 +228,12 @@ export default function App() {
             const localCart = localStorage.getItem("aura_cart");
             const items = localCart ? JSON.parse(localCart) : [];
             if (items.length > 0) {
-              await setDoc(doc(db, "carts", user.uid), {
+              const cleanPayload = sanitizeFirestoreData({
                 userId: user.uid,
                 items,
                 updatedAt: new Date().toISOString()
               });
+              await setDoc(doc(db, "carts", user.uid), cleanPayload);
             }
           }
         } catch (err) {
@@ -300,10 +384,11 @@ export default function App() {
     setIsCartOpen(false);
 
     try {
-      await setDoc(doc(db, "orders", orderId), {
+      const cleanOrder = sanitizeFirestoreData({
         ...newOrder,
         userId: currentUser ? currentUser.uid : "guest"
       });
+      await setDoc(doc(db, "orders", orderId), cleanOrder);
     } catch (err) {
       console.error("Error saving order to Firestore:", err);
       handleFirestoreError(err, OperationType.WRITE, `orders/${orderId}`);
@@ -588,12 +673,38 @@ export default function App() {
         isOwnerLoggedIn={isOwnerLoggedIn}
         onLogin={() => setIsOwnerLoggedIn(true)}
         onLogout={() => setIsOwnerLoggedIn(false)}
+        allOrders={allOrders}
+        onUpdateOrder={handleUpdateOrder}
+        onDeleteOrder={handleDeleteOrder}
+      />
+
+      {/* Policy Modal Overlay */}
+      <PolicyModal
+        type={policyModal}
+        onClose={() => setPolicyModal(null)}
       />
 
       {/* Footer */}
-      <footer className="bg-white border-t border-[#e2e8f0] py-8 text-center text-xs text-gray-400 font-mono tracking-widest mt-auto">
-        <p>© 2026 AURA & CO. ALL RIGHTS RESERVED.</p>
-        <p className="text-[10px] text-gray-300 mt-1">CRAFTED FOR PEAK MINIMALIST LIFESTYLE REFINEMENT</p>
+      <footer className="bg-white border-t border-[#e2e8f0] py-10 text-center text-xs text-gray-400 font-mono tracking-widest mt-auto">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col items-center gap-3">
+          <p className="text-gray-500 font-medium font-sans tracking-tight">© 2026 AURA & CO. ALL RIGHTS RESERVED.</p>
+          <div className="flex flex-wrap items-center justify-center gap-6 text-[10px] uppercase font-mono tracking-wider text-gray-400">
+            <button
+              onClick={() => setPolicyModal("terms")}
+              className="hover:text-black transition-colors cursor-pointer"
+            >
+              Terms & Conditions
+            </button>
+            <span className="text-gray-250 select-none">|</span>
+            <button
+              onClick={() => setPolicyModal("privacy")}
+              className="hover:text-black transition-colors cursor-pointer"
+            >
+              Privacy Policy
+            </button>
+          </div>
+          <p className="text-[9px] text-gray-300 mt-1 uppercase">CRAFTED FOR PEAK MINIMALIST LIFESTYLE REFINEMENT</p>
+        </div>
       </footer>
 
     </div>

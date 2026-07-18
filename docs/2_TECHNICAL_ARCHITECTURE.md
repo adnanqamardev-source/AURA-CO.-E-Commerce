@@ -33,6 +33,7 @@ The project is structurally divided into modular directories separating layout d
 │   │   ├── Navbar.tsx                # Sticky top bar with navigation, currency, admin portal triggers
 │   │   ├── OrderHistoryModal.tsx     # Past purchase records and loyalty system
 │   │   ├── OwnerPanelModal.tsx       # Secured Lock screen + Store Admin Catalog & UPI gate controllers
+│   │   ├── PolicyModal.tsx           # Interactive modal for Terms and Privacy policies
 │   │   ├── UserAuthModal.tsx         # Firebase Multi-Protocol Authentication (Email, Google, Phone SMS)
 │   │   └── ProductCard.tsx           # Individual product card UI with options
 │   ├── utils/

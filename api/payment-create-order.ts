@@ -1,58 +1,64 @@
-/**
- * Standalone Vercel Serverless Function — Razorpay Payment Verification
- *
- * Isolated from `server.ts` (the Express app) to avoid the
- * ERR_MODULE_NOT_FOUND crash on Vercel. Uses only Node's built-in `crypto`.
- *
- * Route: POST /api/payment/verify
- */
-
-import crypto from "crypto";
-
-const RAZORPAY_KEY_SECRET =
-  process.env.RAZORPAY_KEY_SECRET || "33tvlmPudUcueWNiyzchBaI2";
-
 export default async function handler(req: any, res: any) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   if (req.method !== "POST") {
-    res.status(405).json({ success: false, error: "Method not allowed." });
-    return;
-  }
-
-  let razorpay_order_id: unknown;
-  let razorpay_payment_id: unknown;
-  let razorpay_signature: unknown;
-  try {
-    const body = req.body && typeof req.body === "object" ? req.body : {};
-    razorpay_order_id = body.razorpay_order_id;
-    razorpay_payment_id = body.razorpay_payment_id;
-    razorpay_signature = body.razorpay_signature;
-  } catch {
-    res.status(400).json({ success: false, error: "Invalid request body." });
-    return;
-  }
-
-  if (
-    typeof razorpay_order_id !== "string" ||
-    typeof razorpay_payment_id !== "string" ||
-    typeof razorpay_signature !== "string"
-  ) {
-    res.status(400).json({ success: false, error: "Missing payment verification parameters." });
-    return;
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const generatedSignature = crypto
-      .createHmac("sha256", RAZORPAY_KEY_SECRET)
-      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-      .digest("hex");
+    const { amount, currency, receipt } = req.body;
 
-    if (generatedSignature === razorpay_signature) {
-      res.status(200).json({ success: true });
-    } else {
-      res.status(400).json({ success: false, error: "Invalid payment signature." });
+    const keyId = process.env.RAZORPAY_KEY_ID || "rzp_test_fallback";
+    const keySecret = process.env.RAZORPAY_KEY_SECRET || "fallback_secret";
+
+    // If test keys/fallback, we can simulate order creation
+    if (keyId === "rzp_test_fallback") {
+      return res.status(200).json({
+        id: `order_${Math.random().toString(36).substr(2, 9)}`,
+        entity: "order",
+        amount: amount || 50000,
+        amount_paid: 0,
+        amount_due: amount || 50000,
+        currency: currency || "INR",
+        receipt: receipt || "receipt_1",
+        status: "created",
+        attempts: 0,
+        notes: [],
+        created_at: Math.floor(Date.now() / 1000),
+        is_simulated: true,
+      });
     }
+
+    const authHeader = "Basic " + Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+
+    const response = await fetch("https://api.razorpay.com/v1/orders", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: authHeader,
+      },
+      body: JSON.stringify({
+        amount: amount, // in smallest unit (paise)
+        currency: currency || "INR",
+        receipt: receipt,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Razorpay API response error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    return res.status(200).json(data);
   } catch (error: any) {
-    console.error("Razorpay verify error:", error);
-    res.status(500).json({ success: false, error: "Payment verification failed." });
+    console.error("Create Order Error:", error);
+    return res.status(500).json({ error: error.message || "Failed to create Razorpay order" });
   }
 }

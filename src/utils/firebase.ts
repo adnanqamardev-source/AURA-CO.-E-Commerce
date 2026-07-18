@@ -61,3 +61,40 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   console.error('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
+
+/**
+ * Recursively purges undefined and function fields from any object or array
+ * to ensure compatibility with Firestore.
+ */
+export function sanitizeFirestoreData(data: any): any {
+  if (data === null) {
+    return null;
+  }
+  if (data === undefined) {
+    return undefined;
+  }
+  if (typeof data === "function") {
+    return undefined;
+  }
+  if (Array.isArray(data)) {
+    return data
+      .map(item => sanitizeFirestoreData(item))
+      .filter(item => item !== undefined);
+  }
+  if (data instanceof Date) {
+    return data.toISOString();
+  }
+  if (typeof data === "object") {
+    const cleaned: Record<string, any> = {};
+    for (const key of Object.keys(data)) {
+      const val = data[key];
+      const cleanedVal = sanitizeFirestoreData(val);
+      if (cleanedVal !== undefined) {
+        cleaned[key] = cleanedVal;
+      }
+    }
+    return cleaned;
+  }
+  return data;
+}
+

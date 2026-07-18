@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <!-- Deep charcoal background with subtle inner glow -->
+  <rect width="512" height="512" rx="128" fill="#121212" />
+  
+  <!-- Subtle circular golden boundaries -->
+  <circle cx="256" cy="256" r="210" fill="none" stroke="url(#goldGradient)" stroke-width="4" stroke-opacity="0.4" />
+  <circle cx="256" cy="256" r="195" fill="none" stroke="url(#goldGradient)" stroke-width="1.5" stroke-opacity="0.2" />
+
+  <!-- Monogram A -->
+  <g transform="translate(0, -5)">
+    <!-- Elegant stylized A lines -->
+    <path d="M 256 120 L 150 370" fill="none" stroke="url(#goldGradient)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 256 120 L 362 370" fill="none" stroke="url(#goldGradient)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 193 295 L 319 295" fill="none" stroke="url(#goldGradient)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <!-- Central decorative diamond -->
+    <path d="M 256 210 L 268 225 L 256 240 L 244 225 Z" fill="url(#goldGradient)" />
+  </g>
+
+  <!-- Definition of gradients -->
+  <defs>
+    <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F2C94C" />
+      <stop offset="30%" stop-color="#FFEBB3" />
+      <stop offset="70%" stop-color="#F2994A" />
+      <stop offset="100%" stop-color="#E2B13C" />
+    </linearGradient>
+  </defs>
+</svg>
