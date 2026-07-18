@@ -28,6 +28,8 @@ export interface Order {
   shippingDetails: ShippingDetails;
   status: "Processing" | "Shipped" | "Delivered";
   trackingNumber: string;
+  utr?: string;
+  paymentMethod?: "Cash on Delivery" | "UPI" | "Razorpay";
 }
 
 export interface ChatMessage {

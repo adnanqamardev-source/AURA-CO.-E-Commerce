@@ -12,7 +12,7 @@ interface CartSidebarProps {
   cartItems: CartItem[];
   onUpdateQuantity: (id: string, delta: number) => void;
   onRemoveItem: (id: string) => void;
-  onPlaceOrder: (shipping: ShippingDetails, promoDiscount: number) => void;
+  onPlaceOrder: (shipping: ShippingDetails, promoDiscount: number, paymentMethod?: string, utrNumber?: string) => void;
   currency: CurrencyCode;
   upiSettings?: UpiSettings;
   currentUser?: FirebaseUser | null;
@@ -64,13 +64,15 @@ export default function CartSidebar({
   }, [currentUser]);
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "gpay" | "phonepe">("razorpay");
+  const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "gpay" | "phonepe" | "cash">("razorpay");
   const [razorpayMethod, setRazorpayMethod] = useState<"card" | "netbanking">("card");
   const [selectedBank, setSelectedBank] = useState<string>("");
   const [gpayUpi, setGpayUpi] = useState<string>("");
   const [phonepeUpi, setPhonepeUpi] = useState<string>("");
   const [upiRefNo, setUpiRefNo] = useState("");
   const [upiFormError, setUpiFormError] = useState("");
+  const [utrNumber, setUtrNumber] = useState("");
+  const [utrError, setUtrError] = useState("");
 
   const formatCardNumber = (value: string) => {
     const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "");
@@ -112,18 +114,18 @@ export default function CartSidebar({
     const intervals = [1200, 1500, 1800, 1200];
     let currentStep = 0;
 
-    const runSteps = () => {
-      if (currentStep < 4) {
-        setTimeout(() => {
-          currentStep += 1;
-          setPaymentProcessStep(currentStep);
-          runSteps();
-        }, intervals[currentStep]);
-      } else {
-        // Complete the order!
-        setTimeout(() => {
-          onPlaceOrder(shipping, discount);
-          // Reset wizard
+        const runSteps = () => {
+          if (currentStep < 4) {
+            setTimeout(() => {
+              currentStep += 1;
+              setPaymentProcessStep(currentStep);
+              runSteps();
+            }, intervals[currentStep]);
+          } else {
+            // Complete the order!
+            setTimeout(() => {
+              onPlaceOrder(shipping, discount, paymentMethod, utrNumber);
+              // Reset wizard
           setCheckoutStep("cart");
           setPromoDiscount(0);
           setCouponCode("");
@@ -369,6 +371,15 @@ export default function CartSidebar({
         return;
       }
       setCardError("");
+    }
+
+    // UTR validation for UPI payments
+    if (paymentMethod === "gpay" || paymentMethod === "phonepe") {
+      if (!utrNumber || utrNumber.length !== 12) {
+        setUtrError("Please enter the 12-digit UTR number from your transaction receipt.");
+        return;
+      }
+      setUtrError("");
     }
 
     setCheckoutStep("paying");
@@ -939,14 +950,43 @@ export default function CartSidebar({
                     )}
                   </div>
 
-                  <button
-                    onClick={() => setCheckoutStep("shipping")}
-                    className="text-xs font-semibold text-[#1a1a1a] underline cursor-pointer hover:text-gray-600"
-                  >
-                    Edit Shipping Information
-                  </button>
-                </div>
-              )}
+                    <button
+                      onClick={() => setCheckoutStep("shipping")}
+                      className="text-xs font-semibold text-[#1a1a1a] underline cursor-pointer hover:text-gray-600"
+                    >
+                      Edit Shipping Information
+                    </button>
+
+                    {/* UTR Verification for UPI payments */}
+                    {paymentMethod === "gpay" || paymentMethod === "phonepe" ? (
+                      <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3">
+                        <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider">UPI Transaction Reference (UTR)</h4>
+                        <p className="text-[10px] text-amber-700 leading-relaxed">
+                          After completing payment in your UPI app, enter the 12-digit UTR number from your transaction receipt.
+                        </p>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-700 mb-1">UTR Number (12 digits)</label>
+                          <input
+                            type="text"
+                            value={utrNumber}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, "").slice(0, 12);
+                              setUtrNumber(val);
+                              if (val.length === 12) setUtrError("");
+                            }}
+                            placeholder="123456789012"
+                            maxLength={12}
+                            className={`w-full px-3 py-2 border rounded-lg text-xs font-mono bg-white focus:outline-none focus:border-black ${
+                              utrError ? "border-red-500" : "border-gray-200"
+                            }`}
+                          />
+                          {utrError && <p className="text-red-500 text-[10px] mt-1">{utrError}</p>}
+                          <p className="text-[9px] text-gray-400 mt-1">Find this in your UPI app transaction history</p>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
 
               {checkoutStep === "paying" && (
                 <div className="py-8 flex flex-col items-center justify-center space-y-6 text-center">

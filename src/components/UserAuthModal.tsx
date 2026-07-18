@@ -34,6 +34,27 @@ export default function UserAuthModal({ isOpen, onClose }: UserAuthModalProps) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // Initialize reCAPTCHA verifier on component mount for phone auth
+    if (!(window as any).recaptchaVerifier && typeof document !== 'undefined') {
+      const container = document.getElementById("recaptcha-container");
+      if (container) {
+        try {
+          const verifier = new RecaptchaVerifier(auth, "recaptcha-container", {
+            size: "invisible",
+            callback: () => {
+              // reCAPTCHA solved silently
+            },
+            "expired-callback": () => {
+              setErrorMsg("reCAPTCHA expired. Please request the code again.");
+            }
+          });
+          (window as any).recaptchaVerifier = verifier;
+        } catch (e) {
+          console.warn("Could not initialize reCAPTCHA verifier:", e);
+        }
+      }
+    }
+
     // Cleanup any lingering recaptchaVerifier on unmount
     return () => {
       if ((window as any).recaptchaVerifier) {

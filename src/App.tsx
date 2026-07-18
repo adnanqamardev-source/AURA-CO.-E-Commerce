@@ -351,7 +351,7 @@ export default function App() {
     }
   };
 
-  const handlePlaceOrder = async (shipping: ShippingDetails, promoDiscount: number) => {
+  const handlePlaceOrder = async (shipping: ShippingDetails, promoDiscount: number, paymentMethod?: string, utrNumber?: string) => {
     if (!currentUser) {
       setIsAuthOpen(true);
       showToast("Please sign in or register to place an order.");
@@ -377,6 +377,8 @@ export default function App() {
       shippingDetails: shipping,
       status: "Processing", // Statuses will progress as simulated
       trackingNumber: `TRK${Math.floor(1000000000 + Math.random() * 9000000000)}`,
+      paymentMethod: paymentMethod as Order["paymentMethod"],
+      utr: utrNumber,
     };
 
     setOrders((prev) => [newOrder, ...prev]);
