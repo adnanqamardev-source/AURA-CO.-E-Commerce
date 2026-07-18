@@ -15,6 +15,7 @@ Aura & Co. deploys a secure, multi-layered authentication framework separating a
 ### B. Multi-Protocol Authentication (Customer Accounts)
 
 Aura & Co. integrates Firebase Authentication to allow users to sign up, sign in, and sync their shopping data seamlessly. Three distinct auth strategies are supported:
+
 1. **Email / Password Vault:** Standard credentials registration. Password must be at least 6 characters long.
 2. **Google Single Sign-On:** Fast, zero-input profile creation utilizing Google Identity providers.
 3. **Phone OTP Verification (SMS Access):**
@@ -110,4 +111,4 @@ The system enforces strict structural separation between guest users, authentica
 
 1. **Broken Local Storage Memory:** If local memory is corrupted or manually cleared by browser settings, React states automatically fall back gracefully to the original 8 curated boutique products, default UPI VPA settings, and empty checkout bags without crashing the screen.
 2. **Offline Mode Resilience:** If the customer loses internet connectivity during QR checkout, the static QR code (which generates natively using URI payloads) remains functional, allowing physical NPCI payments to complete offline before internet restoration.
-3. **No-Interactive reCAPTCHA:** In rare browser environments where iframe sizing makes CAPTCHA checks block inputs, we deploy an *Invisible* reCAPTCHA verifier that operates fully in the background without forcing users to click image grids, keeping checkout smooth.
+3. **No-Interactive reCAPTCHA:** In rare browser environments where iframe sizing makes CAPTCHA checks block inputs, we deploy an _Invisible_ reCAPTCHA verifier that operates fully in the background without forcing users to click image grids, keeping checkout smooth.
