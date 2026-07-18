@@ -16,11 +16,11 @@ Aura & Co. deploys a secure, multi-layered authentication framework separating a
 
 Aura & Co. integrates Firebase Authentication to allow users to sign up, sign in, and sync their shopping data seamlessly. Three distinct auth strategies are supported:
 
-1. **Email / Password Vault:** Standard credentials registration. Password must be at least 6 characters long.
+1. **Email / Password Vault:** Standard credentials registration. Password must be at least 6 characters long. Includes demo account (`patron@aura.com` / `auraboutique`) for testing.
 2. **Google Single Sign-On:** Fast, zero-input profile creation utilizing Google Identity providers.
 3. **Phone OTP Verification (SMS Access):**
    - **User Input:** Enter complete phone number in international E.164 format (e.g., `+15551234567` or `+919876543210`).
-   - **Anti-Spam Security:** Operates an **invisible reCAPTCHA Verifier** tied to the DOM button ID. This prevents computerized brute-forcing of SMS credits.
+   - **Anti-Spam Security:** Operates an **invisible reCAPTCHA Verifier** initialized on component mount via `RecaptchaVerifier` from Firebase Auth. This prevents computerized brute-forcing of SMS credits.
    - **Dispatch Protocol:** Triggers Firebase's server-side dispatch (`signInWithPhoneNumber`) sending a 6-digit verification code directly to the customer's cell device.
    - **Handshake Confirmation:** The user inputs the code, and client-side confirmation (`confirmationResult.confirm(otpCode)`) safely completes login.
 

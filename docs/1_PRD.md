@@ -35,13 +35,13 @@ To be the absolute gold-standard, lightweight digital showroom engine for boutiq
 | **Interactive Curated Showcase** | High-contrast visual grid with filter tabs (All, Home, Wellness, Work) displaying exquisite product cards with hover micro-interactions. | Built | **Must-Have** |
 | **Multi-Currency Engine** | Real-time currency switching (USD, EUR, GBP, INR) with instant price translation across the entire product catalog. | Built | **Must-Have** |
 | **Direct UPI QR Code Generation** | Generates an NPCI-compliant `upi://pay?pa=...` QR code preview inside the checkout drawer, dynamically converting cart totals to INR based on standard exchange rates. | Built | **Must-Have** |
-| **NPCI Transaction Verification (UTR)** | Client-side input forcing buyers to enter the 12-digit UPI Transaction Ref (UTR / Ref No.) from their banking receipt to authorize and place orders. | Built | **Must-Have** |
-| **Secure Owner Dashboard** | Private modal protected by a passcode credentials wall (`admin`/`admin123`) to prevent unauthorized public access. | Built | **Must-Have** |
-| **Direct UPI Gateway Config** | Owner-only panel to toggle UPI checkout, edit the Business UPI VPA ID (handle), and modify the Merchant KYC display name with live QR preview. | Built | **Must-Have** |
-| **Catalog CRUD Manager** | Full capability for authorized owners to add new curated arrivals, edit product prices, change categories, upload image URLs, or wipe/reset standard inventory. | Built | **Must-Have** |
-| **AI Concierge Companion** | Server-side Gemini AI shopping assistant guiding customers on wellness routines, lifestyle pairings, and product inquiries. | Built | **Must-Have** |
-| **Firebase Customer Accounts** | Multi-protocol secure login (Email/Password, Google Sign-In, and **SMS Phone OTP Auth** using invisible reCAPTCHA) with clean, minimalist design. | Built | **Must-Have** |
-| **Firestore Cloud Sync** | High-performance real-time synchronization of customer shopping bags (Carts) and Loyalty logs (Orders) directly with Cloud Firestore. | Built | **Must-Have** |
+| **NPCI Transaction Verification (UTR)** | Client-side input forcing buyers to enter the 12-digit UPI Transaction Ref (UTR / Ref No.) from their banking receipt to authorize and place orders. | Built (validates 12-digit numeric UTR, stores with order) | **Must-Have** |
+| **Secure Owner Dashboard** | Private modal protected by a passcode credentials wall (`admin`/`admin123`) to prevent unauthorized public access. | Built (Vercel serverless verify-passcode endpoint) | **Must-Have** |
+| **Direct UPI Gateway Config** | Owner-only panel to toggle UPI checkout, edit the Business UPI VPA ID (handle), and modify the Merchant KYC display name with live QR preview. | Built (live QR preview, persisted in localStorage & Firestore) | **Must-Have** |
+| **Catalog CRUD Manager** | Full capability for authorized owners to add new curated arrivals, edit product prices, change categories, upload image URLs, or wipe/reset standard inventory. | Built (full CRUD with Firestore sync) | **Must-Have** |
+| **AI Concierge Companion** | Server-side Gemini AI shopping assistant guiding customers on wellness routines, lifestyle pairings, and product inquiries. | Built (Vercel serverless gemini-chat with PRODUCTS injection) | **Must-Have** |
+| **Firebase Customer Accounts** | Multi-protocol secure login (Email/Password, Google Sign-In, and **SMS Phone OTP Auth** using invisible reCAPTCHA) with clean, minimalist design. | Built (all 3 methods with error handling & demo account) | **Must-Have** |
+| **Firestore Cloud Sync** | High-performance real-time synchronization of customer shopping bags (Carts) and Loyalty logs (Orders) directly with Cloud Firestore. | Built (auto-sync on auth state change) | **Must-Have** |
 | **Compliance & Legal Footers** | Interactive footer providing persistent copyright details and launching modal windows for custom-tailored Terms & Conditions and Privacy Policy agreements. | Built | **Must-Have** |
 
 ---

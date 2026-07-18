@@ -166,22 +166,22 @@ export default function App() {
   const handleUpdateOrder = async (orderId: string, updatedFields: Partial<Order>) => {
     try {
       // Find original order
-      const existingOrder = allOrders.find(o => o.id === orderId) || orders.find(o => o.id === orderId);
+      const existingOrder = allOrders.find((o: Order) => o.id === orderId) || orders.find((o: Order) => o.id === orderId);
       if (!existingOrder) return;
 
       const mergedOrder = { ...existingOrder, ...updatedFields };
 
       // Update in local states
-      setAllOrders((prev) => {
-        const found = prev.some(o => o.id === orderId);
+      setAllOrders((prev: Order[]) => {
+        const found = prev.some((o: Order) => o.id === orderId);
         if (found) {
-          return prev.map((o) => (o.id === orderId ? mergedOrder : o));
+          return prev.map((o: Order) => (o.id === orderId ? mergedOrder : o));
         } else {
           return [mergedOrder, ...prev];
         }
       });
-      setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? mergedOrder : o))
+      setOrders((prev: Order[]) =>
+        prev.map((o: Order) => (o.id === orderId ? mergedOrder : o))
       );
       
       // Save to Firestore
@@ -196,8 +196,8 @@ export default function App() {
 
   const handleDeleteOrder = async (orderId: string) => {
     try {
-      setAllOrders((prev) => prev.filter((o) => o.id !== orderId));
-      setOrders((prev) => prev.filter((o) => o.id !== orderId));
+      setAllOrders((prev: Order[]) => prev.filter((o: Order) => o.id !== orderId));
+      setOrders((prev: Order[]) => prev.filter((o: Order) => o.id !== orderId));
       
       // Delete from Firestore
       const { deleteDoc } = await import("firebase/firestore");
@@ -284,7 +284,7 @@ export default function App() {
   };
 
   // --- Calculate total loyalty points ---
-  const totalPoints = orders.reduce((acc, order) => {
+  const totalPoints = orders.reduce((acc: number, order: Order) => {
     // 10 points for every $10 spent on subtotal
     return acc + Math.floor(order.subtotal / 10) * 10;
   }, 0);
@@ -299,10 +299,10 @@ export default function App() {
     const chosenOption = selectedOption || product.options?.values[0] || "";
     const cartItemId = `${product.id}-${chosenOption}`;
 
-    setCartItems((prevItems) => {
-      const existing = prevItems.find((item) => item.id === cartItemId);
+    setCartItems((prevItems: CartItem[]) => {
+      const existing = prevItems.find((item: CartItem) => item.id === cartItemId);
       if (existing) {
-        return prevItems.map((item) =>
+        return prevItems.map((item: CartItem) =>
           item.id === cartItemId ? { ...item, quantity: item.quantity + 1 } : item
         );
       } else {
@@ -330,23 +330,23 @@ export default function App() {
   };
 
   const handleUpdateCartQuantity = (id: string, delta: number) => {
-    setCartItems((prevItems) =>
+    setCartItems((prevItems: CartItem[]) =>
       prevItems
-        .map((item) => {
+        .map((item: CartItem) => {
           if (item.id === id) {
             const newQty = item.quantity + delta;
             return { ...item, quantity: newQty };
           }
           return item;
         })
-        .filter((item) => item.quantity > 0)
+        .filter((item: CartItem) => item.quantity > 0)
     );
   };
 
   const handleRemoveCartItem = (id: string) => {
-    const item = cartItems.find((i) => i.id === id);
+    const item = cartItems.find((i: CartItem) => i.id === id);
     if (item) {
-      setCartItems((prev) => prev.filter((i) => i.id !== id));
+      setCartItems((prev: CartItem[]) => prev.filter((i: CartItem) => i.id !== id));
       showToast(`Removed ${item.name} from your bag.`);
     }
   };
